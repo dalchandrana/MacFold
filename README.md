@@ -1,3 +1,5 @@
+<img src="docs/assets/mark.png" alt="Mac Duo logo" width="96" align="right">
+
 # Mac Duo
 
 **Your desktop follows your MacBook lid.** An open-source native macOS menu-bar app, written in Swift and Metal.
