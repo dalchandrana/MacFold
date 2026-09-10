@@ -17,6 +17,8 @@ MACDUO_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./build.sh
 
 You can also store that identity in a local `signing-identity.txt`, which is ignored by Git. Keep using the same identity for updates. An ad-hoc signature changes with the executable, so macOS may require granting access again after a rebuild. No certificate, private key, signing identity file, or personal validation log is included in this repository.
 
+The app packaging step strips debug symbols before signing so local build-folder paths are not included in the distributed executable. Keep debug symbols in your local build directory, and use ad-hoc signing for public development downloads if you do not intend to publish your certificate identity. Check the final DMG and ZIP contents as well as source files before uploading a release.
+
 ## Privacy and implementation
 
 ScreenCaptureKit excludes this app from its own capture. Audio capture is disabled. Desktop frames remain in bounded memory; they are not saved, uploaded or analyzed. The live effect uses no network service, account, analytics or third-party runtime dependency.

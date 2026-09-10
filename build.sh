@@ -15,6 +15,8 @@ fi
 APP="$PWD/build/Mac Duo.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MacDuo" "$APP/Contents/MacOS/MacDuo"
+# Remove debug symbols containing local build paths before signing the app.
+xcrun strip -S "$APP/Contents/MacOS/MacDuo"
 cp Resources/MacDuoMark.png Resources/MacDuo.icns "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
