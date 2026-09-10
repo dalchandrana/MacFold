@@ -26,7 +26,7 @@
 
 <p><a href="https://macduo.dhananjaytech.app/#effects"><img src="docs/assets/roll.jpg" alt="Roll effect" width="24%"> <img src="docs/assets/shutter.jpg" alt="Shutter effect" width="24%"> <img src="docs/assets/flex.jpg" alt="Flex effect" width="24%"> <img src="docs/assets/iris.jpg" alt="Iris effect" width="24%"></a></p>
 
-Hold the lid still and the screen clears after **1–5 seconds**—**2 seconds** by default. Live preview, compact floating controls, orange Light/Dark themes, and menu-bar access are included. Press **Esc** or **⌃⌥⌘F** to pause.
+Hold the lid still and the screen clears after **1–5 seconds**—**2 seconds** by default. Live preview, compact floating controls, orange Light/Dark themes, and menu-bar access are included. Close settings or switch desktops: Mac Duo keeps following in the background, without raising its window. Press **Esc** or **⌃⌥⌘F** to pause.
 
 ## Install
 

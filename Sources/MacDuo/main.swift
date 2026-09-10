@@ -1,12 +1,14 @@
 import AppKit
 import SwiftUI
 import FoldCore
+import OSLog
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     var model: AppModel!
     private var window: NSWindow!
     private var statusItem: NSStatusItem!
     private var screenObserver: NSObjectProtocol?
+    private let logger = Logger(subsystem:"local.lidflow.mac",category:"settings")
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = AppModel()
         let content = NSHostingView(rootView:Controls(model:model))
@@ -27,8 +29,11 @@ import FoldCore
         }
         model.showWindow = { [weak self] in self?.showSettings() }
         model.overlayVisibilityChanged = { [weak self] visible in
-            // Keep the live preview and pause controls usable above the effect.
-            self?.window.level = visible ? NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.statusWindow))+2) : .normal
+            guard let self else { return }
+            self.updateSettingsLevel()
+            if visible {
+                self.logger.notice("Effect shown; settings level: \(self.window.level.rawValue); app active: \(NSApp.isActive,privacy:.public); settings on current desktop: \(self.window.isOnActiveSpace,privacy:.public).")
+            }
         }
         statusItem = NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength)
         statusItem.button?.image = AppBrand.menuBarMark
@@ -79,6 +84,21 @@ import FoldCore
         return NSRect(x:bounds.midX-size.width/2,y:bounds.midY-size.height/2,width:size.width,height:size.height)
     }
     @objc func showSettings() { fitSettingsWindow();NSApp.activate(ignoringOtherApps:true);window.makeKeyAndOrderFront(nil);model.wakePreview() }
+    private func updateSettingsLevel() {
+        guard let window, let model else { return }
+        // Keep controls readable only while the user is actually using them.
+        // Lid movement must never raise an inactive window over another app.
+        let elevated = model.overlayVisible && NSApp.isActive && window.isKeyWindow && window.isOnActiveSpace
+        let level = elevated ? NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.statusWindow))+2) : .normal
+        if window.level != level {
+            window.level = level
+            logger.notice("Settings level changed; elevated: \(elevated,privacy:.public); app active: \(NSApp.isActive,privacy:.public).")
+        }
+    }
+    func applicationDidBecomeActive(_ notification: Notification) { updateSettingsLevel() }
+    func applicationDidResignActive(_ notification: Notification) { window?.level = .normal }
+    func windowDidBecomeKey(_ notification: Notification) { updateSettingsLevel() }
+    func windowDidResignKey(_ notification: Notification) { window?.level = .normal }
     func windowDidChangeOcclusionState(_ notification: Notification) {
         if window.occlusionState.contains(.visible) { model.wakePreview() }
         else { model.previewView?.isPaused = true }

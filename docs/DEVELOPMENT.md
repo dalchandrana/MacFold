@@ -35,7 +35,13 @@ swift build
 
 The render check uses generated artwork only; it does not capture the desktop. It verifies all five effects: pixel identity when open/reopened, black closure, opacity, blur, practical geometry, distinct intermediate frames, smooth onset, Reduce Motion, cache freshness and GPU timing. Add `--animation` to export generated closing/reopening frames for every effect. GPU measurements exclude capture and display composition. Physical lid sweeps, sustained energy use and platform lifecycle transitions still need testing on more hardware.
 
-## Version 0.1.5 validation
+## Version 0.1.6 background fix
+
+Capture discovery includes offscreen windows and retains the process identity used to exclude Mac Duo. Desktop changes clear old frames and resume capture without changing the enabled state. Settings rise above the effect only when the user is actively using that window, and return to normal when focus leaves. The old 45-second auto-pause was removed; Esc, the pause shortcut, and stillness clearing remain available.
+
+The optimized build and 19 tests pass. The old build was observed auto-disabling at 45 seconds; the update remained enabled for 214 seconds until deliberately quit for a relaunch. Live logs confirmed desktop changes with following still enabled, fresh capture and presentation while inactive, and the settings window at its normal level. Renderer and shader files are unchanged from the measurements below.
+
+## Version 0.1.5 renderer validation
 
 The optimized arm64 build and 19 Swift tests passed on an Apple M4 MacBook Pro. All five GPU render checks passed at 3024 × 1964; per-effect GPU time at the 95th percentile ranged from 1.94 to 2.30 ms. These are offscreen shader measurements, not a 120 FPS or battery-life claim. This is an early, unnotarized release; a full physical lid sweep and sustained battery/latency measurements remain unverified.
 

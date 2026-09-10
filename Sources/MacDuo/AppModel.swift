@@ -112,7 +112,6 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     private var stillness = LidStillness()
     private var liveAnimation = FoldAnimation()
     private var powerCheckedAt: TimeInterval = -.infinity
-    private var overlaySince: TimeInterval?
     private var demoStart: TimeInterval?
     private var previewStart: TimeInterval?
     private var idleSince: TimeInterval?
@@ -241,9 +240,8 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             do {
                 // Ask the API we actually use. Core Graphics preflight can retain an old
                 // permission result and must not block an otherwise authorized SCK session.
-                let available = try await SCShareableContent.excludingDesktopWindows(false,onScreenWindowsOnly:true)
+                try await capture.verifyAccess()
                 guard !Task.isCancelled else { return }
-                guard !available.displays.isEmpty else { throw AppError.message("No capturable display is available.") }
                 self.hasPermission = true
                 self.enabled = true
                 self.status = "Following your lid. Close it gently to see the effect."
@@ -266,6 +264,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     }
 
     func pause(_ message: String = "Paused. Your desktop is clear.") {
+        logger.notice("Following paused: \(message,privacy:.public)")
         enableTask?.cancel();enableTask = nil;checkingPermission = false
         if let path = syntheticCheckPath {
             let report: [String:Any] = ["generatedArtworkOnly":true,"screenCaptureStarted":capture.isRunning,
@@ -415,7 +414,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
                 renderer?.resetProgress(to:0)
                 liveAnimation.reset()
                 panel?.alphaValue = 0
-                overlayVisible = true;overlaySince = now
+                overlayVisible = true
                 overlayVisibilityChanged?(true)
                 panel?.orderFrontRegardless()
                 metalView?.isPaused = false
@@ -429,14 +428,11 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             capture.stop(); idleSince = nil
             logger.notice("Stationary lid: overlay cleared and capture stopped.")
         }
-        if let since = overlaySince, now-since > 45 {
-            pause("Paused after 45 seconds of continuous effect. Enable when you are ready.")
-        }
     }
 
     private func hideOverlay() {
         panel?.orderOut(nil);panel?.alphaValue = 0;metalView?.isPaused = true
-        overlayVisible = false;overlaySince = nil
+        overlayVisible = false
         liveAnimation.reset()
         overlayVisibilityChanged?(false)
         if let escapeKey { UnregisterEventHotKey(escapeKey);self.escapeKey = nil }
@@ -479,6 +475,16 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     private func observeWorkspace() {
         let nc = NSWorkspace.shared.notificationCenter
+        notifications.append(nc.addObserver(forName:NSWorkspace.activeSpaceDidChangeNotification,object:nil,queue:.main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                // Drop pixels from the previous Space and resume from a fresh frame.
+                // Changing desktops never changes the user's enabled state.
+                self.hideOverlay();self.capture.stop()
+                self.logger.notice("Desktop changed; following remains enabled: \(self.enabled,privacy:.public).")
+                self.update()
+            }
+        })
         let sleepEvents: [(Notification.Name, Int)] = [
             (NSWorkspace.willSleepNotification,0), (NSWorkspace.screensDidSleepNotification,1),
             (NSWorkspace.sessionDidResignActiveNotification,2)]

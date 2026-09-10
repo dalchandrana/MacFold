@@ -10,11 +10,28 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     private let queue = DispatchQueue(label:"local.lidflow.frames",qos:.userInteractive)
     private var generation = 0
     private var starting = false
+    // This identity belongs to our process, not a window or Space. Keep it when
+    // settings are closed or moved offscreen so every new stream excludes us.
+    private var ownApplication: SCRunningApplication?
     var onFailure: ((String) -> Void)?
     var onUnavailable: (() -> Void)?
     var onFirstFrame: (() -> Void)?
     private var hasFrame = false
     var isRunning: Bool { stream != nil || starting }
+
+    @MainActor private func availableContent() async throws -> SCShareableContent {
+        let content = try await SCShareableContent.excludingDesktopWindows(false,onScreenWindowsOnly:false)
+        if let own = content.applications.first(where: { $0.processID == getpid() }) {
+            ownApplication = own
+        }
+        return content
+    }
+
+    @MainActor func verifyAccess() async throws {
+        let content = try await availableContent()
+        guard !content.displays.isEmpty else { throw AppError.message("No capturable display is available.") }
+        guard ownApplication != nil else { throw AppError.message("Cannot safely exclude Mac Duo from capture. Please reopen the app.") }
+    }
 
     @MainActor func start(displayID: CGDirectDisplayID, width: Int, height: Int, fps: Int) async throws {
         guard !isRunning else { return }
@@ -23,16 +40,16 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         starting = true
         defer { if token == generation { starting = false } }
         let available: SCShareableContent
-        do { available = try await SCShareableContent.excludingDesktopWindows(false,onScreenWindowsOnly:true) }
+        do { available = try await availableContent() }
         catch { guard token == generation else { return }; throw error }
         guard token == generation else { return }
         guard let display = available.displays.first(where:{$0.displayID == displayID}) else {
             throw AppError.message("The built-in display is not available.")
         }
         // Exclude our own application explicitly, avoiding recursive capture of the overlay.
-        let ownApp = available.applications.filter { $0.processID == getpid() }
-        guard !ownApp.isEmpty else { throw AppError.message("Cannot safely exclude Mac Duo from capture. Please reopen the app.") }
-        let filter = SCContentFilter(display:display, excludingApplications:ownApp, exceptingWindows:[])
+        guard let ownApplication else { throw AppError.message("Cannot safely exclude Mac Duo from capture. Please reopen the app.") }
+        let filter = SCContentFilter(display:display, excludingApplications:[ownApplication], exceptingWindows:[])
+        logger.notice("Capture prepared with process exclusion; app active: \(NSApp.isActive,privacy:.public).")
         let config = SCStreamConfiguration()
         config.width = width; config.height = height
         config.minimumFrameInterval = CMTime(value:1,timescale:Int32(fps))
