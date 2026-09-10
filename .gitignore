@@ -1,0 +1,11 @@
+# Local builds and personal signing configuration
+.build/
+build/
+.swiftpm/
+validation/
+validation-*/
+signing-identity.txt
+.DS_Store
+.claude/
+*.xcuserstate
+xcuserdata/
