@@ -2,7 +2,7 @@
 
 **Your desktop follows your MacBook lid.** An open-source native macOS menu-bar app, written in Swift and Metal.
 
-[Website](https://dhananjaybhosale.github.io/MacDuo/) · [How to build](#build) · [Attribution](ATTRIBUTION.md) · [MIT license](LICENSE)
+[Website](https://macduo.dhananjaytech.app/) · [How to build](#build) · [Attribution](ATTRIBUTION.md) · [MIT license](LICENSE)
 
 ## What it does
 
