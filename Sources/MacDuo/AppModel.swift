@@ -47,6 +47,15 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             NSApp.appearance = appearance.native
         }
     }
+    /// Choosing an effect only saves and redraws. It never starts a full-screen demo.
+    @Published var effect = FoldEffect.resolve(persisted:UserDefaults.standard.string(forKey:"effect")) {
+        didSet {
+            guard oldValue != effect else { return }
+            UserDefaults.standard.set(effect.persistedIdentifier,forKey:"effect")
+            wakePreview()
+            update()
+        }
+    }
     @Published var previewAngle = 72.0
     @Published var clearAngle = UserDefaults.standard.object(forKey:"clearAngle") as? Double ?? 105 {
         didSet { UserDefaults.standard.set(clearAngle,forKey:"clearAngle") }
@@ -190,6 +199,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         u.progress = Float(preview ? previewProgress : liveProgress)
         u.perspective = Float(perspective);u.blur = Float(blur);u.shadow = Float(shadow)
         u.fadeOnly = reducedMotion ? 1 : 0
+        u.effect = effect.shaderIndex // The desktop and its preview always share one selection.
         return u
     }
 

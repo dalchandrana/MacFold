@@ -3,6 +3,8 @@ import MetalKit
 import CoreVideo
 import FoldCore
 
+/// 32 bytes, mirrored field for field by `Uniforms` in `FoldShader.source`.
+/// The final slot is the effect index rather than padding.
 struct FoldUniforms: Equatable {
     var progress: Float = 0
     var perspective: Float = 0.7
@@ -10,7 +12,9 @@ struct FoldUniforms: Equatable {
     var shadow: Float = 0.65
     var size = SIMD2<Float>(1, 1)
     var fadeOnly: Float = 0
-    var pad: Float = 0
+    var effect: UInt32 = FoldEffect.fallback.shaderIndex
+
+    var selectedEffect: FoldEffect { FoldEffect.resolve(shaderIndex: effect) }
 }
 
 final class FrameStore: @unchecked Sendable {
@@ -198,7 +202,10 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
     }
 
     func encode(command: MTLCommandBuffer, pass: MTLRenderPassDescriptor, texture: MTLTexture, uniforms: FoldUniforms, sourceRevision: UInt64? = nil) throws {
-        let needsBlur = uniforms.progress > 0.00001 && uniforms.progress < 1 && uniforms.blur > 0 && uniforms.fadeOnly < 0.5
+        let moving = uniforms.progress > 0.00001 && uniforms.progress < 1 && uniforms.fadeOnly < 0.5
+        // Duo keeps its original condition exactly. The curved and telescoping
+        // surfaces minify the source, so they read the pyramid even at zero Softness.
+        let needsBlur = moving && (uniforms.blur > 0 || uniforms.selectedEffect.needsPrefilteredSource)
         let blurred = needsBlur ? try prepareBlur(command: command, input: texture, revision:sourceRevision) : texture
         guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw AppError.message("Render encoder unavailable.") }
         var uniforms = uniforms

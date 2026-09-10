@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import FoldCore
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     var model: AppModel!
@@ -30,12 +31,12 @@ import SwiftUI
             self?.window.level = visible ? NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.statusWindow))+2) : .normal
         }
         statusItem = NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength)
-        statusItem.button?.image = NSImage(systemSymbolName:"macbook",accessibilityDescription:"Mac Duo")
+        statusItem.button?.image = AppBrand.menuBarMark
         statusItem.button?.toolTip = "Mac Duo — your desktop follows your lid"
         let menu = NSMenu();menu.delegate = self;statusItem.menu = menu
         let appMenu = NSMenu()
         let appItem = NSMenuItem();appMenu.addItem(appItem)
-        let submenu = NSMenu();submenu.addItem(appearanceItem());submenu.addItem(.separator())
+        let submenu = NSMenu();submenu.addItem(effectItem());submenu.addItem(appearanceItem());submenu.addItem(.separator())
         submenu.addItem(withTitle:"Quit Mac Duo",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
         appItem.submenu = submenu;NSApp.mainMenu = appMenu
         showSettings()
@@ -90,6 +91,24 @@ import SwiftUI
               let appearance = AppAppearance(rawValue:rawValue) else { return }
         model.appearance = appearance
     }
+    @objc private func setEffect(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String else { return }
+        // Selecting an effect saves it and redraws. It starts no full-screen test.
+        model.effect = FoldEffect.resolve(persisted:rawValue)
+    }
+    private func effectItem() -> NSMenuItem {
+        let item = NSMenuItem(title:"Effect",action:nil,keyEquivalent:"")
+        item.image = NSImage(systemSymbolName:model.effect.symbol,accessibilityDescription:nil)
+        let menu = NSMenu(title:"Effect");menu.identifier = NSUserInterfaceItemIdentifier("effect");menu.delegate = self
+        for effect in FoldEffect.allCases {
+            let option = menu.addItem(withTitle:effect.title,action:#selector(setEffect(_:)),keyEquivalent:"")
+            option.target = self;option.representedObject = effect.persistedIdentifier
+            option.toolTip = effect.summary
+            option.state = model.effect == effect ? .on : .off
+        }
+        item.submenu = menu
+        return item
+    }
     private func appearanceItem() -> NSMenuItem {
         let item = NSMenuItem(title:"Appearance",action:nil,keyEquivalent:"")
         item.image = NSImage(systemSymbolName:"circle.lefthalf.filled",accessibilityDescription:nil)
@@ -107,6 +126,12 @@ import SwiftUI
             for item in menu.items { item.state = item.representedObject as? String == model.appearance.rawValue ? .on : .off }
             return
         }
+        if menu.identifier?.rawValue == "effect" {
+            for item in menu.items {
+                item.state = item.representedObject as? String == model.effect.persistedIdentifier ? .on : .off
+            }
+            return
+        }
         menu.removeAllItems()
         let state = NSMenuItem(title:model.lidAngle.map{String(format:"Lid angle: %.0f°",$0)} ?? "Sensor unavailable",action:nil,keyEquivalent:"")
         state.isEnabled = false;menu.addItem(state)
@@ -114,6 +139,7 @@ import SwiftUI
         let toggle = menu.addItem(withTitle:model.enabled ? "Pause Mac Duo" : "Enable Mac Duo",action:#selector(toggleEffect),keyEquivalent:"");toggle.target = self
         let settings = menu.addItem(withTitle:"Open Mac Duo…",action:#selector(showSettings),keyEquivalent:",");settings.target = self
         let test = menu.addItem(withTitle:"Test desktop for 8 seconds",action:#selector(testEffect),keyEquivalent:"");test.target = self
+        menu.addItem(effectItem())
         menu.addItem(appearanceItem())
         menu.addItem(.separator())
         menu.addItem(withTitle:"Quit Mac Duo",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")

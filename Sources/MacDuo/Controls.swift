@@ -1,5 +1,6 @@
 import SwiftUI
 import MetalKit
+import FoldCore
 
 struct MetalPreview: NSViewRepresentable {
     @ObservedObject var model: AppModel
@@ -71,6 +72,8 @@ struct Controls: View {
 
     private var header: some View {
         HStack(alignment:.top) {
+            Image(nsImage:AppBrand.mark).resizable().scaledToFit().frame(width:40,height:40)
+                .accessibilityHidden(true)
             VStack(alignment:.leading,spacing:5) {
                 Text("Mac Duo").font(.system(size:27,weight:.semibold,design:.rounded))
                 Text("Let your desktop follow the fold.").font(.system(size:12)).foregroundStyle(.secondary)
@@ -110,9 +113,23 @@ struct Controls: View {
         .frame(width:width)
     }
 
+    /// Sits in the row the "Controls" heading used to occupy. The reduced stack
+    /// spacing keeps the panel exactly as tall as before, so nothing scrolls and
+    /// the MacBook and the panel still align at top and bottom.
+    private var effectPicker: some View {
+        Picker("Effect",selection:$model.effect) {
+            ForEach(FoldEffect.allCases) { effect in Text(effect.title).tag(effect) }
+        }
+        .pickerStyle(.segmented).labelsHidden().controlSize(.small)
+        .font(.system(size:11,weight:.medium))
+        .frame(height:19)
+        .accessibilityLabel("Effect")
+        .help("Effect: \(model.effect.title) — \(model.effect.summary)")
+    }
+
     private var settings: some View {
-        VStack(alignment:.leading,spacing:11) {
-            Text("Controls").font(.system(size:12,weight:.semibold))
+        VStack(alignment:.leading,spacing:10) {
+            effectPicker
             Toggle("Follow my lid",isOn:$model.followLid)
                 .toggleStyle(.switch).controlSize(.small).font(.system(size:11.5,weight:.medium))
             slider("Preview angle",value:Binding(get:{model.followLid ? model.lidAngle ?? model.clearAngle : model.previewAngle},

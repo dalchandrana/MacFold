@@ -2,82 +2,53 @@
 
 # Mac Duo
 
-**Your desktop follows your MacBook lid.** An open-source native macOS menu-bar app, written in Swift and Metal.
+**Make your desktop feel physical.** Five effects that follow the movement of your MacBook lid.
 
-[Website](https://macduo.dhananjaytech.app/) · [How to build](#build) · [Attribution](ATTRIBUTION.md) · [MIT license](LICENSE)
+[![Release](https://img.shields.io/github/v/release/DhananjayBhosale/MacDuo?color=c65a16&label=download)](https://github.com/DhananjayBhosale/MacDuo/releases/latest)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-333333)](#install)
+[![MIT](https://img.shields.io/badge/license-MIT-c65a16)](LICENSE)
 
-## What it does
+### [↓ Download Mac Duo](https://github.com/DhananjayBhosale/MacDuo/releases/latest/download/Mac-Duo.dmg)
 
-The default **Duo** effect expands and softly defocuses the desktop around the bottom hinge as you close the lid. The preview follows the same animation, and the desktop returns to normal when you open the lid or hold it still.
+[Website](https://macduo.dhananjaytech.app/) · [All releases & ZIP](https://github.com/DhananjayBhosale/MacDuo/releases) · [Build from source](docs/DEVELOPMENT.md) · [Report an issue](https://github.com/DhananjayBhosale/MacDuo/issues)
 
-- Live HID lid-angle tracking on compatible MacBooks.
-- A **1–5 second** clear-after timer, on by default at **2 seconds**.
-- A compact floating control window with no internal scrolling.
-- System, Light and Dark appearance, with an orange accent.
-- Esc or Control–Option–Command–F to pause; menu-bar controls remain available.
-- Up to 120 Hz requested rendering on supported displays while moving on external power. Battery and Low Power Mode cap rendering at 60 Hz; serious thermal pressure caps it at 30 Hz. These are scheduling limits, not a measured end-to-end FPS guarantee.
-- Idle preview rendering stops, unchanged draws are skipped, and blur calculations are cached until source pixels change.
+<p align="center"><a href="https://macduo.dhananjaytech.app/"><img src="docs/assets/effects-preview.gif" alt="Generated artwork showing the Duo effect closing and reopening" width="720"></a><br><sub>Generated Duo demo. Your real desktop stays on your Mac.</sub></p>
 
-**Roll, Shutter, Flex and Iris are being developed.** They are not included in this initial public version (0.1.4).
+## Five ways to close
 
-## Requirements
+| Effect | What it feels like |
+|---|---|
+| **Duo** · default | The desktop expands, softens and disappears around the hinge. |
+| **Roll** | A flexible display curling into a roll. |
+| **Shutter** | Four rigid panels sliding behind one another. |
+| **Flex** | A continuous display bowing under tension. |
+| **Iris** | Precision blades closing around the desktop. |
 
-- macOS 14 or newer and a Metal-capable MacBook exposing the HID lid-angle sensor.
-- Xcode with Swift 6 to build.
-- Screen Recording permission for the real desktop effect. Manual preview and Replay do not need it.
-- An active, unmirrored built-in display. External displays are not animated.
+<p><a href="https://macduo.dhananjaytech.app/#effects"><img src="docs/assets/roll.jpg" alt="Roll effect" width="24%"> <img src="docs/assets/shutter.jpg" alt="Shutter effect" width="24%"> <img src="docs/assets/flex.jpg" alt="Flex effect" width="24%"> <img src="docs/assets/iris.jpg" alt="Iris effect" width="24%"></a></p>
 
-Tested locally on an Apple M4 MacBook Pro. A chip name alone does not establish sensor compatibility. This is a personal desktop utility, not a notarized App Store release.
+Hold the lid still and the screen clears after **1–5 seconds**—**2 seconds** by default. Live preview, compact floating controls, orange Light/Dark themes, and menu-bar access are included. Press **Esc** or **⌃⌥⌘F** to pause.
 
-## Build
+## Install
 
-```sh
-git clone https://github.com/DhananjayBhosale/MacDuo.git
-cd MacDuo
-./build.sh
-open "build/Mac Duo.app"
-```
+**Apple silicon · macOS 14+ · compatible MacBook lid sensor.** Tested on an M4 MacBook Pro. External displays are not animated.
 
-The default build uses ad-hoc signing. For a stable Screen Recording identity across rebuilds, provide your own Apple Development certificate:
+1. [Download **Mac-Duo.dmg**](https://github.com/DhananjayBhosale/MacDuo/releases/latest/download/Mac-Duo.dmg), open it, and drag **Mac Duo** into **Applications**.
+2. Open **Mac Duo** from Applications. This release is **not notarized**, so macOS may initially block it with “cannot be opened” or “Apple could not verify” wording.
+3. After trying to open it, go to **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway** for **Mac Duo**, then confirm **Open**. [Apple’s instructions](https://support.apple.com/102445).
+4. In Mac Duo, click **Enable Mac Duo** and allow **Screen Recording** when prompted. Reopen the app if macOS asks. Desktop frames stay in memory; nothing is recorded or uploaded.
 
-```sh
-MACDUO_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./build.sh
-```
+Try **Replay** first—it works without Screen Recording permission. For manual control, turn off **Follow my lid**. Keep **Clear when the lid is still** enabled for normal use at any angle.
 
-You can also store that identity in a local `signing-identity.txt`, which is ignored by Git. Keep using the same identity for updates. An ad-hoc signature changes with the executable, so macOS may require granting access again after a rebuild. No certificate, private key, signing identity file, or personal validation log is included in this repository.
+<details><summary><strong>Updating or using the ZIP instead</strong></summary>
 
-## Use
+Quit Mac Duo before replacing the app in Applications. For the ZIP, unzip it and move **Mac Duo.app** into Applications, then follow steps 2–4 above. Development signatures may require granting Screen Recording again after an update. If permission appears enabled but capture fails, remove the old Mac Duo entry in Screen Recording settings, add the current app from Applications, and reopen it.
 
-1. Open the app and try **Replay**. Turn off **Follow my lid** to use the manual angle slider.
-2. Click **Enable Mac Duo**, then allow Screen Recording in System Settings if requested. Quit and reopen if macOS asks.
-3. Choose a **Clears at** angle below your usual working angle. Gently lower the lid to see the effect.
-4. Leave **Clear when the lid is still** on to restore normal viewing after the selected delay, at any angle.
-5. Use Esc during an effect or Control–Option–Command–F to pause. Closing the settings window keeps the menu-bar app running.
+</details>
 
-The app starts paused. It does not change sleep, brightness, wallpaper, display settings or login items. The internal bundle identifier remains `local.lidflow.mac` to preserve settings and permission continuity for early builds.
+## Small, local, open
 
-## Privacy and implementation
+Native **Swift + Metal**, with no third-party runtime dependencies, accounts, analytics or network access. Settled previews stop rendering; blur is cached. Rendering is capped according to power and temperature, with up to 120 Hz requested on supported displays while plugged in. Actual frame rate and battery impact vary by Mac.
 
-ScreenCaptureKit excludes this app from its own capture. Audio capture is disabled. Desktop frames remain in bounded memory; they are not saved, uploaded or analyzed. The live effect uses no network service, account, analytics or third-party runtime dependency.
+[Build & verification](docs/DEVELOPMENT.md) · [Reference credits](ATTRIBUTION.md) · [MIT license](LICENSE)
 
-The HID reader runs off the main thread. A Metal fragment shader and reusable blur pyramid render the effect. Reduce Motion uses a simple fade. Capture stops when the effect clears, and sensor/capture failures restore the desktop.
-
-macOS owns sleep and the secure login screen. Animation cannot be guaranteed while the display is asleep, during login or with protected content. Capture may take a moment to warm up; the desktop and live preview remain clear until a fresh frame is ready.
-
-## Verify
-
-```sh
-swift test
-swift build
-.build/debug/MacDuo --render-check validation
-```
-
-The render check uses generated artwork only; it does not capture the desktop. It verifies pixel identity after reopening, opacity, blur, geometry, cache freshness and GPU timing. GPU measurements exclude capture and display composition. Physical lid sweeps, sustained energy use and platform lifecycle transitions still need testing on more hardware.
-
-## Contributing
-
-Issues and focused pull requests are welcome. Include macOS version, Mac model, whether its lid sensor is detected, reproduction steps and relevant test results. Do not attach private desktop recordings or signing credentials. Run the checks above for renderer or motion changes. Keep the app dependency-free and respect Reduce Motion and existing power limits.
-
-## Credits
-
-The implementation is original. Public demonstrations and hardware research helped guide it; see [ATTRIBUTION.md](ATTRIBUTION.md). Mac Duo is independent and is not affiliated with Apple, Bendy or the reference projects.
+Independent software, not affiliated with Apple. Contributions and hardware reports are welcome.
