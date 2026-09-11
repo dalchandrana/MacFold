@@ -11,7 +11,8 @@ struct MetalPreview: NSViewRepresentable {
             let renderer = try FoldRenderer(device:device)
             renderer.fallback = try renderer.makePreviewTexture()
             renderer.parameters = { [weak model] in model?.uniforms(preview:true) ?? FoldUniforms() }
-            renderer.animatedProgress = { [weak model] in model?.animatedProgress(preview:true) }
+            renderer.animatedState = { [weak model] in model?.animatedState(preview:true) }
+            renderer.blendsWithDesktop = true
             renderer.pausesWhenSettled = true
             renderer.keepsAnimating = { [weak model] in
                 guard let model else { return false }
@@ -36,6 +37,7 @@ struct MetalPreview: NSViewRepresentable {
 
 struct Controls: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var updater: AppUpdater
     @Environment(\.colorScheme) private var colorScheme
     private var accent: Color {
         colorScheme == .dark ? Color(red:1.0,green:0.56,blue:0.18) : Color(red:0.76,green:0.30,blue:0.04)
@@ -79,6 +81,13 @@ struct Controls: View {
                 Text("Let your desktop follow the fold.").font(.system(size:12)).foregroundStyle(.secondary)
             }
             Spacer()
+            Button { updater.checkForUpdates() } label: {
+                Image(systemName:"arrow.triangle.2.circlepath")
+                    .font(.system(size:16,weight:.semibold)).foregroundStyle(accent)
+                    .frame(width:28,height:28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).disabled(updater.isBusy)
+            .accessibilityLabel(updater.buttonTitle).help(updater.buttonTitle)
             HStack(spacing:6) {
                 Circle().fill(model.sensorAvailable ? accent : .orange).frame(width:6,height:6)
                 Text(model.lidAngle.map { String(format:"Lid %.0f°",$0) } ?? "Looking for sensor")
@@ -134,7 +143,8 @@ struct Controls: View {
                 .toggleStyle(.switch).controlSize(.small).font(.system(size:11.5,weight:.medium))
             slider("Preview angle",value:Binding(get:{model.followLid ? model.lidAngle ?? model.clearAngle : model.previewAngle},
                                                set:{model.previewAngle = $0}),range:5...140,
-                   text:String(format:"%.0f°",model.followLid ? model.lidAngle ?? 0 : model.previewAngle))
+                   text:model.followLid ? model.lidAngle.map { String(format:"%.0f°",$0) } ?? "—"
+                                        : String(format:"%.0f°",model.previewAngle))
                 .disabled(model.followLid || model.previewPlaying)
             Divider()
             slider("Clears at",value:$model.clearAngle,range:60...140,text:String(format:"%.0f°",model.clearAngle))

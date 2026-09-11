@@ -5,13 +5,14 @@ import OSLog
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     var model: AppModel!
+    private let updater = AppUpdater()
     private var window: NSWindow!
     private var statusItem: NSStatusItem!
     private var screenObserver: NSObjectProtocol?
     private let logger = Logger(subsystem:"local.lidflow.mac",category:"settings")
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = AppModel()
-        let content = NSHostingView(rootView:Controls(model:model))
+        let content = NSHostingView(rootView:Controls(model:model,updater:updater))
         // The window owns its size. SwiftUI's ideal content height must never
         // stretch it to the screen edges; every control stays visible beside the preview.
         content.sizingOptions = []
@@ -41,10 +42,11 @@ import OSLog
         let menu = NSMenu();menu.delegate = self;statusItem.menu = menu
         let appMenu = NSMenu()
         let appItem = NSMenuItem();appMenu.addItem(appItem)
-        let submenu = NSMenu();submenu.addItem(effectItem());submenu.addItem(appearanceItem());submenu.addItem(.separator())
+        let submenu = NSMenu();submenu.addItem(effectItem());submenu.addItem(appearanceItem());submenu.addItem(updateItem());submenu.addItem(.separator())
         submenu.addItem(withTitle:"Quit Mac Duo",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
         appItem.submenu = submenu;NSApp.mainMenu = appMenu
         showSettings()
+        UpdateInstallation.confirmRelaunch()
         if let index = CommandLine.arguments.firstIndex(of:"--overlay-check"), index+1 < CommandLine.arguments.count {
             let path = CommandLine.arguments[index+1]
             DispatchQueue.main.asyncAfter(deadline:.now()+1) { [weak self] in self?.model.checkOverlay(output:path) }
@@ -103,9 +105,20 @@ import OSLog
         if window.occlusionState.contains(.visible) { model.wakePreview() }
         else { model.previewView?.isPaused = true }
     }
-    func windowWillClose(_ notification:Notification) { model.previewView?.isPaused = true }
+    func windowWillClose(_ notification:Notification) {
+        model.previewView?.isPaused = true
+        model.previewView?.releaseDrawables()
+        model.previewRenderer?.releaseTransientResources()
+    }
     @objc func toggleEffect() { if model.enabled { model.pause() } else { model.enable() } }
     @objc func testEffect() { model.testDesktop() }
+    @objc private func checkForUpdates() { updater.checkForUpdates() }
+    private func updateItem() -> NSMenuItem {
+        let item = NSMenuItem(title:"Check for Updates…",action:#selector(checkForUpdates),keyEquivalent:"")
+        item.target = self;item.isEnabled = !updater.isBusy
+        item.image = NSImage(systemSymbolName:"arrow.triangle.2.circlepath",accessibilityDescription:nil)
+        return item
+    }
     @objc private func setAppearance(_ sender: NSMenuItem) {
         guard let rawValue = sender.representedObject as? String,
               let appearance = AppAppearance(rawValue:rawValue) else { return }
@@ -161,6 +174,7 @@ import OSLog
         let test = menu.addItem(withTitle:"Test desktop for 8 seconds",action:#selector(testEffect),keyEquivalent:"");test.target = self
         menu.addItem(effectItem())
         menu.addItem(appearanceItem())
+        menu.addItem(updateItem())
         menu.addItem(.separator())
         menu.addItem(withTitle:"Quit Mac Duo",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
     }
@@ -173,6 +187,51 @@ import OSLog
 }
 
 MainActor.assumeIsolated {
+if let index = CommandLine.arguments.firstIndex(of:"--update-handoff-check"), index+3 < CommandLine.arguments.count {
+    Task {
+        do {
+            try await UpdateInstallation.checkHandoff(archive:URL(fileURLWithPath:CommandLine.arguments[index+1]),
+                                                     manifest:URL(fileURLWithPath:CommandLine.arguments[index+2]),version:CommandLine.arguments[index+3])
+            exit(0)
+        } catch { fputs("Handoff check failed: \(error.localizedDescription)\n",stderr);exit(1) }
+    }
+    dispatchMain()
+}
+if let index = CommandLine.arguments.firstIndex(of:"--update-package-check"), index+4 < CommandLine.arguments.count {
+    do {
+        try UpdateInstallation.checkPackage(archive:URL(fileURLWithPath:CommandLine.arguments[index+1]),
+                                            manifest:URL(fileURLWithPath:CommandLine.arguments[index+2]),
+                                            version:CommandLine.arguments[index+3],output:URL(fileURLWithPath:CommandLine.arguments[index+4],isDirectory:true))
+        print("Package checksum, bounded extraction, bundle identity, version, macOS, architecture, and code signature verified.");exit(0)
+    } catch { fputs("Package check failed: \(error.localizedDescription)\n",stderr);exit(1) }
+}
+if let index = CommandLine.arguments.firstIndex(of:"--update-installer-fixture"), index+1 < CommandLine.arguments.count {
+    do { try UpdateInstallation.checkInstallerFixture(output:URL(fileURLWithPath:CommandLine.arguments[index+1],isDirectory:true));print("Installer fixture passed: LaunchServices, ready handshake, replacement, and failed-launch rollback.");exit(0) }
+    catch { fputs("Installer fixture failed: \(error.localizedDescription)\n",stderr);exit(1) }
+}
+if CommandLine.arguments.contains("--update-fixture-fail"), Bundle.main.bundleIdentifier == "local.lidflow.mac.update-fixture" { exit(42) }
+if let index = CommandLine.arguments.firstIndex(of:"--update-fixture-ready"), index+1 < CommandLine.arguments.count,
+   Bundle.main.bundleIdentifier == "local.lidflow.mac.update-fixture" {
+    let ready = URL(fileURLWithPath:CommandLine.arguments[index+1])
+    guard ready.lastPathComponent == "ready", ready.deletingLastPathComponent().lastPathComponent.hasPrefix("MacDuo-update-fixture-"),
+          ready.deletingLastPathComponent() == Bundle.main.bundleURL.deletingLastPathComponent() else { exit(1) }
+    do { try Data("ready".utf8).write(to:ready,options:.withoutOverwriting) } catch { exit(1) }
+    let app = NSApplication.shared;app.setActivationPolicy(.accessory);app.run();exit(0)
+}
+if let index = CommandLine.arguments.firstIndex(of:"--finish-update"), index+1 < CommandLine.arguments.count {
+    exit(UpdateInstallation.finishUpdate(token:CommandLine.arguments[index+1]))
+}
+if CommandLine.arguments.contains("--update-check") {
+    Task { @MainActor in
+        do {
+            if let update = try await AppUpdater.findUpdate() {
+                print("Update available: \(update.tag) — \(update.releasePage.absoluteString)")
+            } else { print("No newer stable Mac Duo release is available.") }
+            exit(0)
+        } catch { fputs("Update check failed: \(error.localizedDescription)\n",stderr);exit(1) }
+    }
+    dispatchMain()
+}
 if CommandLine.arguments.contains("--render-check") {
     do { try RenderCheck.run();exit(0) } catch { fputs("Render check failed: \(error)\n",stderr);exit(1) }
 }

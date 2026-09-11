@@ -2,23 +2,24 @@
 
 # Mac Duo
 
-**Make your desktop feel physical.** Five effects that follow the movement of your MacBook lid.
+**Make your desktop feel physical.** Six effects that follow the movement of your MacBook lid.
 
 [![Release](https://img.shields.io/github/v/release/DhananjayBhosale/MacDuo?color=c65a16&label=download)](https://github.com/DhananjayBhosale/MacDuo/releases/latest)
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-333333)](#install)
+[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-333333)](#install)
 [![MIT](https://img.shields.io/badge/license-MIT-c65a16)](LICENSE)
 
 ### [↓ Download Mac Duo](https://github.com/DhananjayBhosale/MacDuo/releases/latest/download/Mac-Duo.dmg)
 
-[Website](https://macduo.dhananjaytech.app/) · [All releases & ZIP](https://github.com/DhananjayBhosale/MacDuo/releases) · [Build from source](docs/DEVELOPMENT.md) · [Report an issue](https://github.com/DhananjayBhosale/MacDuo/issues)
+[Website](https://macduo.dhananjaytech.app/) · [All releases & ZIP](https://github.com/DhananjayBhosale/MacDuo/releases) · [Changelog](CHANGELOG.md) · [Build from source](docs/DEVELOPMENT.md) · [Report an issue](https://github.com/DhananjayBhosale/MacDuo/issues)
 
 <p align="center"><a href="https://macduo.dhananjaytech.app/"><img src="docs/assets/effects-preview.gif" alt="Generated artwork showing the Duo effect closing and reopening" width="720"></a><br><sub>Generated Duo demo. Your real desktop stays on your Mac.</sub></p>
 
-## Five ways to close
+## Six ways to close
 
 | Effect | What it feels like |
 |---|---|
 | **Duo** · default | The desktop expands, softens and disappears around the hinge. |
+| **Ghost** | The desktop appears anchored behind the tilting lid, with gradual defocus. |
 | **Roll** | A flexible display curling into a roll. |
 | **Shutter** | Four rigid panels sliding behind one another. |
 | **Flex** | A continuous display bowing under tension. |
@@ -30,8 +31,10 @@ Hold the lid still and the screen clears after **1–5 seconds**—**2 seconds**
 
 ## Install
 
+**Mac Duo 0.1.12 supports macOS 13 Ventura or newer**, with six effects including Ghost. A compatible lid sensor is required. Built for macOS 13 and tested on a newer M4 Mac; physical Ventura testing is still pending.
+
 > [!NOTE]
-> **MacBook compatibility · macOS 14+**<br>
+> **MacBook compatibility · macOS 13+**<br>
 > **Expected to work:** MacBook Air with M2 or newer, and 14-/16-inch MacBook Pro with M1 Pro/Max or newer.<br>
 > **Unsupported:** M1 MacBook Air and 13-inch MacBook Pro with M1 or M2.<br>
 > Tested on an M4 MacBook Pro. Mac Duo checks for a compatible lid sensor; external displays are not animated.
@@ -45,13 +48,15 @@ Try **Replay** first—it works without Screen Recording permission. For manual 
 
 <details><summary><strong>Updating or using the ZIP instead</strong></summary>
 
-Quit Mac Duo before replacing the app in Applications. For the ZIP, unzip it and move **Mac Duo.app** into Applications, then follow steps 2–4 above. Development signatures may require granting Screen Recording again after an update. If permission appears enabled but capture fails, remove the old Mac Duo entry in Screen Recording settings, add the current app from Applications, and reopen it.
+In Mac Duo, choose **Check for Updates…** from the header or menu bar, then **Install & Relaunch**. The app checks the official GitHub release and verifies the download before replacing itself. Checks run only when you ask. macOS may require **Privacy & Security → Open Anyway** for an update; the recovery dialog lets you retry or restore the previous app. Install the app in a writable Applications folder first.
+
+For a manual update, quit Mac Duo before replacing the app in Applications. For the ZIP, unzip it and move **Mac Duo.app** into Applications, then follow steps 2–4 above. Development signatures may require granting Screen Recording again after an update. If permission appears enabled but capture fails, remove the old Mac Duo entry in Screen Recording settings, add the current app from Applications, and reopen it.
 
 </details>
 
 ## Small, local, open
 
-Native **Swift + Metal**, with no third-party runtime dependencies, accounts, analytics or network access. Settled previews stop rendering; blur is cached. Rendering is capped according to power and temperature, with up to 120 Hz requested on supported displays while plugged in. Actual frame rate and battery impact vary by Mac.
+Native **Swift + Metal**, with no third-party runtime dependencies, accounts or analytics. Effects stay entirely local; **Check for Updates** contacts GitHub only when you request it, and installation downloads the release. No screen content is sent. Settled previews stop rendering; blur is cached. Rendering is capped according to power and temperature, with up to 120 Hz requested on supported displays while plugged in. Actual frame rate and battery impact vary by Mac.
 
 [Build & verification](docs/DEVELOPMENT.md) · [Reference credits](ATTRIBUTION.md) · [MIT license](LICENSE)
 

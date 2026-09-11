@@ -58,7 +58,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     }
     @Published var previewAngle = 72.0
     @Published var clearAngle = UserDefaults.standard.object(forKey:"clearAngle") as? Double ?? 105 {
-        didSet { UserDefaults.standard.set(clearAngle,forKey:"clearAngle") }
+        didSet { UserDefaults.standard.set(clearAngle,forKey:"clearAngle");resetStillness();wakePreview();update() }
     }
     @Published var perspective = UserDefaults.standard.object(forKey:"perspective") as? Double ?? 0.7 {
         didSet { UserDefaults.standard.set(perspective,forKey:"perspective") }
@@ -110,7 +110,9 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     private var sensorAt: TimeInterval = 0
     private var waitingForSensor = false
     private var stillness = LidStillness()
-    private var liveAnimation = FoldAnimation()
+    private var liveAnimation = FoldVisualAnimation()
+    private var motionReference = LidMotionReference()
+    private var overlayRevealed = false
     private var powerCheckedAt: TimeInterval = -.infinity
     private var demoStart: TimeInterval?
     private var previewStart: TimeInterval?
@@ -126,11 +128,14 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         NSApp.appearance = appearance.native
         sensor.onReading = { [weak self] angle in
             guard let self else { return }
-            if self.lidAngle != angle { self.lidAngle = angle }
+            let angleChanged = self.lidAngle != angle
+            if angleChanged { self.lidAngle = angle }
             if self.sensorAvailable != (angle != nil) { self.sensorAvailable = angle != nil }
             self.sensorAt = ProcessInfo.processInfo.systemUptime
             let settled = self.stillness.observe(angle:angle,at:self.sensorAt,delay:self.stillnessDelay)
-            if self.lidIsStill != settled {
+            self.motionReference.observe(angle:angle,isStill:settled,clearWhenStill:self.clearWhenStill)
+            let stillnessChanged = self.lidIsStill != settled
+            if stillnessChanged {
                 self.lidIsStill = settled
                 self.updateStillnessStatus()
                 if self.enabled && self.clearWhenStill && !self.demoRunning {
@@ -138,7 +143,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
                 }
             }
             if angle == nil && self.enabled { self.pause("Lid sensor unavailable. Use the preview or reconnect the sensor.") }
-            self.update()
+            // Keep every freshness/stillness observation, but avoid repeating
+            // display discovery for identical 30 Hz sensor reports. The timer
+            // still handles deadlines and the missing-report safety check.
+            if angleChanged || stillnessChanged || self.waitingForSensor { self.update() }
         }
         capture.onFirstFrame = { [weak self] in self?.update() }
         capture.onUnavailable = { [weak self] in self?.hideOverlay() }
@@ -152,20 +160,27 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         observeWorkspace()
     }
 
-    var previewProgress: Double {
+    private var fixedReference: Double { min(140,max(60,clearAngle.isFinite ? clearAngle : 105)) }
+    private var liveReference: Double { motionReference.reference(clearAngle:clearAngle) }
+
+    private var previewState: FoldVisualState {
         if let start = previewStart {
             let t = ProcessInfo.processInfo.systemUptime-start
-            if t <= 5 { return FoldMath.progress(angle: demoAngle(t/5),clearAngle:clearAngle) }
+            if t <= 5 { return .at(angle:demoAngle(t/5),reference:fixedReference) }
         }
-        if followLid { return liveProgress }
-        return FoldMath.progress(angle:previewAngle,clearAngle:clearAngle)
+        if followLid { return liveState }
+        return .at(angle:previewAngle,reference:fixedReference)
     }
 
-    /// Both Metal views use this clock in live mode, including the fade to clear.
-    func animatedProgress(preview: Bool) -> Double? {
+    /// Both views read the same physical and optical state, including the clear handoff.
+    func animatedState(preview: Bool) -> FoldVisualState? {
         if preview && (!followLid || previewPlaying) { return nil }
-        return liveAnimation.sample(target:overlayVisible ? liveProgress : 0,
-                                    at:ProcessInfo.processInfo.systemUptime)
+        let state = liveAnimation.sample(target:overlayVisible ? liveState : .clear,
+                                         at:ProcessInfo.processInfo.systemUptime)
+        if overlayVisible && overlayRevealed, let panel, panel.alphaValue != CGFloat(state.coverage) {
+            panel.alphaValue = state.coverage
+        }
+        return state
     }
 
     func wakePreview() {
@@ -195,7 +210,8 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     func uniforms(preview: Bool) -> FoldUniforms {
         var u = FoldUniforms()
-        u.progress = Float(preview ? previewProgress : liveProgress)
+        let visual = preview ? previewState : liveState
+        u.progress = Float(visual.progress);u.defocus = Float(visual.defocus);u.tilt = Float(visual.tilt)
         u.perspective = Float(perspective);u.blur = Float(blur);u.shadow = Float(shadow)
         u.fadeOnly = reducedMotion ? 1 : 0
         u.effect = effect.shaderIndex // The desktop and its preview always share one selection.
@@ -204,22 +220,24 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     private var demoDuration: Double { syntheticCheckPath == nil ? 8 : 20 }
 
-    var liveProgress: Double {
-        guard enabled,sessionActive,systemAwake,displayAwake,!waitingForSensor else { return 0 }
+    var liveProgress: Double { liveState.progress }
+
+    private var liveState: FoldVisualState {
+        guard enabled,sessionActive,systemAwake,displayAwake,!waitingForSensor else { return .clear }
         if let start = demoStart {
             let t = min(1,(ProcessInfo.processInfo.systemUptime-start)/demoDuration)
-            return FoldMath.progress(angle:demoAngle(t),clearAngle:clearAngle)
+            return .at(angle:demoAngle(t),reference:fixedReference)
         }
-        if shouldClearForStillness { return 0 }
-        guard let angle = lidAngle else { return 0 }
-        return FoldMath.progress(angle:angle,clearAngle:clearAngle)
+        if shouldClearForStillness { return .clear }
+        guard let angle = lidAngle else { return .clear }
+        return .at(angle:angle,reference:liveReference)
     }
 
     private func demoAngle(_ t: Double) -> Double { clearAngle + 8 - sin(min(1,max(0,t)) * .pi) * (clearAngle-12) }
 
     private var shouldClearForStillness: Bool { clearWhenStill && lidIsStill && !demoRunning }
 
-    private func resetStillness() { stillness.reset(); lidIsStill = false }
+    private func resetStillness() { stillness.reset(); motionReference.reset(); lidIsStill = false }
 
     private func updateStillnessStatus() {
         guard enabled, !demoRunning else { return }
@@ -275,6 +293,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
                 try? data.write(to:URL(fileURLWithPath:path))
             }
             syntheticCheckPath = nil
+            renderer?.reportsEveryPresentation = false
         }
         enabled = false;demoStart = nil;demoRunning = false
         hideOverlay();capture.stop();status = message
@@ -301,6 +320,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             let factory = try FoldRenderer(device:device)
             capture.frames.put(try factory.makeSyntheticFrame())
             syntheticCheckPath = output;presentedFrames = 0
+            renderer?.reportsEveryPresentation = true
             enabled = true;demoStart = ProcessInfo.processInfo.systemUptime;demoRunning = true
             status = "Testing the overlay with generated artwork. Esc stops the test."
             update()
@@ -339,12 +359,17 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         let renderer = try FoldRenderer(device:device)
         renderer.frames = capture.frames
         renderer.parameters = { [weak self] in self?.uniforms(preview:false) ?? FoldUniforms() }
-        renderer.animatedProgress = { [weak self] in self?.animatedProgress(preview:false) }
+        renderer.animatedState = { [weak self] in self?.animatedState(preview:false) }
         renderer.onFailure = { [weak self] reason in self?.pause(reason) }
         renderer.onPresented = { [weak self] in
-            guard let self, self.enabled, self.overlayVisible, self.capture.frames.get().0 != nil else { return }
-            if self.panel?.alphaValue == 0 { self.logger.notice("Overlay presented a completed GPU frame.") }
-            self.panel?.alphaValue = 1
+            guard let self, self.enabled, self.overlayVisible, self.capture.frames.hasFrame else { return }
+            // Reveal once after texture readiness. Later completions must never
+            // undo the animated fade; FoldRenderer discards older generations.
+            if !self.overlayRevealed {
+                self.overlayRevealed = true
+                self.panel?.alphaValue = self.liveAnimation.value.coverage
+                self.logger.notice("Overlay texture ready; following the shared transition.")
+            }
             self.presentedFrames += 1
         }
         let view = MTKView(frame:NSRect(origin:.zero,size:screen.frame.size),device:device)
@@ -384,12 +409,13 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             waitingForSensor = false;updateStillnessStatus()
             logger.notice("Fresh sensor reports received; automatic following resumed.")
         }
+        let target = liveProgress
+        let shouldCapture = demoRunning || (!shouldClearForStillness && (lidAngle ?? 180) < liveReference+14)
+        guard shouldCapture || capture.isRunning || overlayVisible else { return }
         guard let screen = builtInScreen(), let display = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
               CGDisplayIsInMirrorSet(display.uint32Value) == 0 else {
             pause("Mac Duo needs an active, unmirrored built-in display.");return
         }
-        let target = liveProgress
-        let shouldCapture = demoRunning || (!shouldClearForStillness && (lidAngle ?? 180) < clearAngle+14)
         if shouldCapture {
             idleSince = nil
             do { try prepareOverlay(on:screen) } catch { pause(error.localizedDescription);return }
@@ -407,22 +433,34 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             if idleSince == nil { idleSince = now }
             if now-(idleSince ?? now) > 1.2 && !overlayVisible { capture.stop() }
         }
-        if target > 0.0001, capture.frames.get().0 != nil {
+        if target > 0.0001, capture.frames.hasFrame {
             if !overlayVisible {
                 // Require a working escape route before putting anything over the desktop.
                 guard registerEscape() else { pause("Could not register Esc. Close other keyboard utilities and try again.");return }
                 renderer?.resetProgress(to:0)
                 liveAnimation.reset()
-                panel?.alphaValue = 0
+                panel?.alphaValue = 0; overlayRevealed = false
                 overlayVisible = true
                 overlayVisibilityChanged?(true)
                 panel?.orderFrontRegardless()
+                // Let MTKView own and retire its drawable. Start with a paused,
+                // explicit view draw, then use the display-paced render loop.
+                metalView?.isPaused = true
+                metalView?.draw()
                 metalView?.isPaused = false
-                // Reveal only after a textured frame completes on the GPU.
-                if let metalView { renderer?.draw(in:metalView) }
             }
-        } else if overlayVisible, (renderer?.progress ?? 0) < 0.0002 || capture.frames.get().0 == nil {
-            hideOverlay()
+        }
+        if overlayVisible {
+            let state = animatedState(preview:false) ?? .clear
+            if !capture.frames.hasFrame {
+                hideOverlay()
+            } else if target == 0 && state.isClear {
+                // Coverage has already reached zero: swapping to the desktop can
+                // no longer expose an old or black drawable, even if the GPU is late.
+                panel?.alphaValue = 0
+                hideOverlay()
+                logger.notice("Clear transition finished; overlay handed back to desktop.")
+            }
         }
         if shouldClearForStillness && !overlayVisible && capture.isRunning {
             capture.stop(); idleSince = nil
@@ -432,7 +470,9 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     private func hideOverlay() {
         panel?.orderOut(nil);panel?.alphaValue = 0;metalView?.isPaused = true
-        overlayVisible = false
+        metalView?.releaseDrawables()
+        overlayVisible = false; overlayRevealed = false
+        renderer?.releaseTransientResources()
         liveAnimation.reset()
         overlayVisibilityChanged?(false)
         if let escapeKey { UnregisterEventHotKey(escapeKey);self.escapeKey = nil }

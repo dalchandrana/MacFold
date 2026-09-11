@@ -16,7 +16,6 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     var onFailure: ((String) -> Void)?
     var onUnavailable: (() -> Void)?
     var onFirstFrame: (() -> Void)?
-    private var hasFrame = false
     var isRunning: Bool { stream != nil || starting }
 
     @MainActor private func availableContent() async throws -> SCShareableContent {
@@ -62,13 +61,14 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         let newStream = SCStream(filter:filter,configuration:config,delegate:self)
         try newStream.addStreamOutput(self,type:.screen,sampleHandlerQueue:queue)
         stream = newStream
+        frames.acceptStream(ObjectIdentifier(newStream))
         do {
             try await newStream.startCapture()
             if token == generation { logger.notice("Live screen stream started.") }
             if token != generation { try? await newStream.stopCapture() }
         } catch {
             guard token == generation else { return }
-            stream = nil; frames.clear()
+            stream = nil; frames.invalidateStream()
             throw error
         }
     }
@@ -76,7 +76,7 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     @MainActor func stop() {
         generation += 1; starting = false
         let previous = stream; stream = nil
-        frames.clear(); hasFrame = false
+        frames.invalidateStream()
         if let previous { Task { try? await previous.stopCapture() } }
     }
 
@@ -84,18 +84,23 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         guard outputType == .screen, sampleBuffer.isValid else { return }
         let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,createIfNecessary:false) as? [[SCStreamFrameInfo:Any]]
         guard let rawStatus = attachments?.first?[.status] as? Int, let status = SCFrameStatus(rawValue:rawStatus) else { return }
-        let buffer = sampleBuffer.imageBuffer
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.stream === stream else { return }
-            if status == .complete, let buffer {
-                self.frames.put(buffer)
-                if !self.hasFrame {
-                    self.hasFrame = true
+        let identity = ObjectIdentifier(stream)
+        if status == .complete, let buffer = sampleBuffer.imageBuffer {
+            // No per-frame main-queue block or buffer backlog. Identity and put
+            // are atomic with stop(), so old callbacks cannot resurrect frames.
+            if frames.put(buffer,from:identity) == true {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.stream === stream else { return }
                     self.logger.notice("First complete live desktop frame received.")
                     self.onFirstFrame?()
                 }
-            } else if status == .blank || status == .suspended || status == .stopped {
-                self.frames.clear(); self.hasFrame = false; self.onUnavailable?()
+            }
+        } else if status == .blank || status == .suspended || status == .stopped {
+            if frames.clear(from:identity) {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.stream === stream else { return }
+                    self.onUnavailable?()
+                }
             }
         }
     }
@@ -103,7 +108,7 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.stream === stream else { return }
-            self.stream = nil; self.frames.clear(); self.hasFrame = false
+            self.stream = nil; self.frames.invalidateStream()
             self.onFailure?(error.localizedDescription)
         }
     }

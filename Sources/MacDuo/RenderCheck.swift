@@ -1,5 +1,6 @@
 import AppKit
 import MetalKit
+import CoreVideo
 import FoldCore
 
 /// Offscreen checks use generated pixels only. No ScreenCaptureKit access.
@@ -168,6 +169,83 @@ import FoldCore
         return values.filter { $0 > 25 && $0 < 230 }.count
     }
 
+    /// Resource retirement must neither pin a stopped capture's textures nor
+    /// invalidate already queued GPU work or reuse a stale revision on restart.
+    private static func checkResourceReuse(_ device: MTLDevice, _ renderer: FoldRenderer) throws -> [String:Any] {
+        func buffer() throws -> CVPixelBuffer {
+            var result: CVPixelBuffer?
+            let attributes: [String:Any] = [kCVPixelBufferMetalCompatibilityKey as String:true,
+                kCVPixelBufferIOSurfacePropertiesKey as String:[:]]
+            try require(CVPixelBufferCreate(kCFAllocatorDefault,64,64,kCVPixelFormatType_32BGRA,
+                attributes as CFDictionary,&result) == kCVReturnSuccess,"Test pixel buffer unavailable.")
+            guard let result else { throw AppError.message("Test pixel buffer missing.") }
+            CVPixelBufferLockBaseAddress(result,[])
+            let bytes = CVPixelBufferGetBaseAddress(result)!.assumingMemoryBound(to:UInt8.self)
+            bytes.initialize(repeating:200,count:CVPixelBufferGetBytesPerRow(result)*64)
+            CVPixelBufferUnlockBaseAddress(result,[])
+            return result
+        }
+        let pixelBuffer = try buffer()
+        let secondRendererStarted = ProcessInfo.processInfo.systemUptime
+        let secondRenderer = try FoldRenderer(device:device)
+        let secondRendererMS = (ProcessInfo.processInfo.systemUptime-secondRendererStarted)*1000
+        try require(secondRenderer.pipeline === renderer.pipeline,"Renderers rebuilt an immutable pipeline for the same device.")
+        try require(secondRenderer.queue !== renderer.queue,"Renderers must keep independent serial command queues.")
+
+        let store = FrameStore(), oldStream = NSObject(), newStream = NSObject()
+        let oldID = ObjectIdentifier(oldStream), newID = ObjectIdentifier(newStream)
+        store.acceptStream(oldID)
+        try require(store.put(pixelBuffer,from:oldID) == true,"First capture frame was not detected.")
+        try require(store.put(pixelBuffer,from:oldID) == false,"Repeated frame delivery repeatedly notified main.")
+        store.invalidateStream()
+        try require(store.put(pixelBuffer,from:oldID) == nil && !store.hasFrame,"A stopped stream resurrected a frame.")
+        store.acceptStream(newID)
+        try require(store.put(pixelBuffer,from:oldID) == nil,"A replaced stream delivered into the new capture.")
+        try require(store.put(pixelBuffer,from:newID) == true,"Replacement capture lost its first frame.")
+        try require(!store.clear(from:oldID) && store.hasFrame,"An old stream cleared the replacement frame.")
+        try require(store.clear(from:newID) && !store.hasFrame,"An unavailable stream retained a frame.")
+        try require(!store.clear(from:newID),"Repeated unavailable frames repeatedly notified main.")
+        try require(store.put(pixelBuffer,from:newID) == true,"Capture recovery lost its first-frame notification.")
+        // Race normal callbacks against stop-style invalidation. Both operations
+        // must use one lock; a separate identity check followed by put can fail.
+        // These threads only retain this immutable generated buffer; none writes pixels.
+        struct ReadOnlyBuffer: @unchecked Sendable { let value: CVPixelBuffer }
+        let sharedBuffer = ReadOnlyBuffer(value:pixelBuffer)
+        for _ in 0..<100 {
+            store.acceptStream(oldID)
+            DispatchQueue.concurrentPerform(iterations:64) { index in
+                if index == 31 { store.invalidateStream() }
+                else { _ = store.put(sharedBuffer.value,from:oldID) }
+            }
+            try require(!store.hasFrame,"A concurrent old callback survived stream invalidation.")
+        }
+        let importsBefore = renderer.textureImportCount
+        let imported = try renderer.importFrame(pixelBuffer,revision:4000)
+        for _ in 0..<120 { _ = try renderer.importFrame(pixelBuffer,revision:4000) }
+        try require(renderer.textureImportCount == importsBefore+1,"Repeated presentations reimported the same captured frame.")
+        _ = try renderer.importFrame(pixelBuffer,revision:4001)
+        try require(renderer.textureImportCount == importsBefore+2,"A recycled capture buffer did not import its new revision.")
+        let texture = CVMetalTextureGetTexture(imported)!
+        var u = FoldUniforms();u.progress = 0.5
+        let plate = try target(device,64,64)
+        let reference = try render(renderer,texture,plate,u,revision:4001)
+        let retainedBytes = renderer.transientTextureBytes
+        try require(retainedBytes > 0,"Blur resource test did not allocate a pyramid.")
+        let command = try encode(renderer,texture,plate,u,revision:4001)
+        renderer.releaseTransientResources()
+        try require(renderer.transientTextureBytes == 0,"Hidden renderer retained its blur pyramid.")
+        let completed = try read(plate,command)
+        try require(completed.pixels == reference.pixels,"Retiring resources invalidated queued GPU work.")
+        let rebuilt = try render(renderer,texture,plate,u,revision:4001)
+        try require(rebuilt.pixels == reference.pixels,"Rebuilding a retired pyramid changed its pixels.")
+        _ = try renderer.importFrame(pixelBuffer,revision:4001)
+        try require(renderer.textureImportCount == importsBefore+3,"Clearing retained a stale captured texture import.")
+        return ["sameFramePresentations":121,"importsForSameFrame":1,"newRevisionReimported":true,
+            "sharedPipelines":true,"independentQueues":true,"secondRendererInitializationMS":secondRendererMS,
+            "captureStopRaceRounds":100,"callbacksPerRound":64,"oldStreamRejected":true,"firstFrameRecovery":true,
+            "retiredBlurBytes":retainedBytes,"queuedWorkSurvivesRetirement":true,"rebuiltPixelsIdentical":true]
+    }
+
     /// Every effect: exact open, exact reopen, opaque black at closure, the shared
     /// Reduce Motion fade, a distinctive intermediate frame, deterministic reversal
     /// and reuse of a cached pyramid. Generated fixtures only.
@@ -252,11 +330,126 @@ import FoldCore
         try require(worst >= 6,"Two effects render nearly the same intermediate frame.")
         report["intermediateSeparationMeanChannelDifference"] = separation
         report["smallestIntermediateSeparation"] = worst
+        // A newly learned resting angle can be near closure. Small movements
+        // there must still leave a usable image, for every shader style.
+        let lowAngleSource = try fixture(device,width:W,height:H) { _,_ in 200 }
+        var lowAngleChecks: [[String:Any]] = []
+        for effect in FoldEffect.allCases {
+            for reference: Double in [5,10,20,30] {
+                for delta: Double in [1,2,3] {
+                    let state = FoldVisualState.at(angle:reference-delta,reference:reference)
+                    var u = FoldUniforms(); u.effect = effect.shaderIndex
+                    u.progress = Float(state.progress); u.defocus = Float(state.defocus)
+                    let frame = try render(renderer,lowAngleSource,plate,u)
+                    let mean = Double(stride(from:0,to:frame.pixels.count,by:4).reduce(0) { $0+Int(frame.pixels[$1]) })/Double(W*H)
+                    try require(mean > 150,"\(effect.title): a tiny movement from a low resting angle hid too much of the display.")
+                    lowAngleChecks.append(["effect":effect.persistedIdentifier,"reference":reference,"delta":delta,"meanChannel":mean])
+                }
+            }
+        }
+        report["lowRestingAngleChecks"] = lowAngleChecks
+        try report.merge(checkGhost(device,renderer,plate,W,H)) { a,_ in a }
         try report.merge(checkRoll(device,renderer,plate,W,H)) { a,_ in a }
         try report.merge(checkShutter(device,renderer,plate,W,H)) { a,_ in a }
         try report.merge(checkFlex(device,renderer,plate,W,H)) { a,_ in a }
         try report.merge(checkIris(device,renderer,plate,W,H)) { a,_ in a }
         return report
+    }
+
+    /// Ghost must anchor content in the resting plane, add blur progressively,
+    /// and continue showing fresh content. No desktop capture is used here.
+    private static func checkGhost(_ device: MTLDevice, _ renderer: FoldRenderer,
+                                   _ plate: MTLTexture, _ W: Int, _ H: Int) throws -> [String: Any] {
+        let checker = try fixture(device,width:W,height:H) { x,y in ((x/10+y/10)%2 == 0) ? 40 : 240 }
+        var source = [UInt8](repeating:0,count:W*H*4)
+        checker.getBytes(&source,bytesPerRow:W*4,from:MTLRegionMake2D(0,0,W,H),mipmapLevel:0)
+        var u = FoldUniforms(); u.effect = FoldEffect.ghost.shaderIndex
+        u.blur = 0; u.shadow = 0
+        let horizontal = try fixture(device,width:W,height:H) { x,_ in UInt8(Double(x)*255/Double(W-1)) }
+        let vertical = try fixture(device,width:W,height:H) { _,y in UInt8(Double(y)*255/Double(H-1)) }
+        var anchorChecks = 0
+        for degrees: Double in [2,5,15,30,45] {
+            for perspective: Double in [0,0.27165042,0.7,1] {
+                let angle = degrees * .pi/180
+                let state = FoldVisualState.at(angle:105-degrees,reference:105)
+                u.progress = Float(state.progress);u.tilt = Float(state.tilt);u.perspective = Float(perspective)
+                let horizontalFrame = try render(renderer,horizontal,plate,u)
+                let verticalFrame = try render(renderer,vertical,plate,u)
+                // Independently project known points on the resting plane onto
+                // the tilted panel. Their rendered colour must still name that
+                // original point across the supported laptop viewing distances.
+                for sourceX: Double in [0.25,0.5,0.75] {
+                    for sourceY: Double in [0.35,0.65,0.9] {
+                        let h = 1-sourceY
+                        let distance = 1/(2.6-perspective)
+                        let planeEye = cos(angle)-0.65*sin(angle)*distance
+                        let alongRay = planeEye/(planeEye+h*sin(angle)*distance)
+                        let panelX = 0.5+(sourceX-0.5)*alongRay
+                        let panelY = 1-(0.65+(h-0.65)*alongRay)/cos(angle)
+                        guard panelX > 0.05 && panelX < 0.95 && panelY > 0.05 && panelY < 0.95 else { continue }
+                        let x = Int(panelX*Double(W)), y = Int(panelY*Double(H))
+                        try require(abs(Double(horizontalFrame.gray(x,y))/255-sourceX) < 0.009,
+                            "Ghost: horizontal content failed to stay anchored in the resting plane.")
+                        try require(abs(Double(verticalFrame.gray(x,y))/255-sourceY) < 0.009,
+                            "Ghost: vertical content failed to compensate for physical lid tilt.")
+                        anchorChecks += 1
+                    }
+                }
+            }
+        }
+        try require(anchorChecks >= 100,"Ghost: too few visible anchor points were checked.")
+        // Isolate optical onset from checker resampling; geometry is proven above.
+        u.tilt = 0
+
+        let topRows = (H/8)..<(H/3), bottomRows = (H*3/4)..<(H*7/8)
+        u.progress = 0
+        let open = try render(renderer,checker,plate,u)
+        let sharpContrast = variation(open,rows:topRows)
+        var onset: [[String:Any]] = []
+        for reference: Double in [45,90,128] {
+            var previousRatio = 1.0
+            for delta: Double in [0,1,2,3,5,8,10,15,25,35] {
+                let state = FoldVisualState.at(angle:reference-delta,reference:reference)
+                u.progress = Float(state.progress); u.defocus = Float(state.defocus)
+                u.perspective = 0.7; u.blur = 0.65
+                let frame = try render(renderer,checker,plate,u)
+                let ratio = variation(frame,rows:topRows)/sharpContrast
+                if delta <= 3 { try require(ratio > 0.98,"Ghost: a tiny bend blurred too abruptly.") }
+                if delta == 5 { try require(ratio > 0.90,"Ghost: the first five degrees should remain mostly sharp.") }
+                if delta == 15 { try require(ratio < 0.85 && ratio > 0.25,"Ghost: fifteen degrees should show moderate, not overwhelming, blur.") }
+                try require(ratio <= previousRatio+0.005,"Ghost: blur did not build progressively with the angle.")
+                previousRatio = ratio
+                onset.append(["referenceAngle":reference,"delta":delta,"contrastRatio":ratio])
+            }
+        }
+
+        // Test geometry and optics together through every physical degree.
+        // The coarse sweep above isolates blur; this catches combined resampling steps.
+        var previousContrast = 1.0, largestContrastStep = 0.0
+        for delta in 0...25 {
+            let state = FoldVisualState.at(angle:90-Double(delta),reference:90)
+            u.progress = Float(state.progress); u.defocus = Float(state.defocus); u.tilt = Float(state.tilt)
+            let frame = try render(renderer,checker,plate,u)
+            let contrast = variation(frame,rows:topRows)/sharpContrast
+            largestContrastStep = max(largestContrastStep,abs(contrast-previousContrast))
+            previousContrast = contrast
+        }
+        try require(largestContrastStep < 0.10,"Ghost: a one-degree movement caused a sudden blur step.")
+        let defocused = try render(renderer,checker,plate,u)
+        let topRatio = variation(defocused,rows:topRows)/sharpContrast
+        let bottomRatio = variation(defocused,rows:bottomRows)/variation(open,rows:bottomRows)
+        try require(topRatio < bottomRatio*0.85,"Ghost: focus should fall away more at the top than at the hinge.")
+
+        let white = try fixture(device,width:W,height:H) { _,_ in 255 }
+        let black = try fixture(device,width:W,height:H) { _,_ in 0 }
+        let first = try render(renderer,white,plate,u,revision:5200)
+        let next = try render(renderer,black,plate,u,revision:5201)
+        try require(first.gray(W/2,H/2) == 255 && next.gray(W/2,H/2) == 0,
+            "Ghost: the fixed desktop froze an earlier frame or unexpectedly dimmed.")
+        return ["ghostRestingPlaneProjectionChecks":anchorChecks,
+                "ghostGradualOnset":onset,"ghostLargestContrastStepPerDegree":largestContrastStep,
+                "ghostTopContrastRatio":topRatio,"ghostHingeContrastRatio":bottomRatio,
+                "ghostPhysicalTiltSweep":true,"ghostContentStaysLive":true]
     }
 
     /// Roll: the sheet below the descending cylinder stays exactly the desktop,
@@ -436,9 +629,21 @@ import FoldCore
         u.progress = 0.95
         let late = H-topLit(try render(renderer,plain,plate,u),x:W/2)
         try require(Double(late) < Double(early)*0.4,"Flex: the sheet does not collapse toward the hinge.")
+        var hingeLoss: [Double] = []
+        for progress: Float in [0.05,0.10] {
+            u.progress = progress; u.shadow = 0
+            let unshaded = try render(renderer,plain,plate,u)
+            u.shadow = 1
+            let contact = try render(renderer,plain,plate,u)
+            let sampleRow = row(0.02,H), columns = (W/2-20)..<(W/2+20)
+            hingeLoss.append(1-rowMean(contact,sampleRow,columns)/rowMean(unshaded,sampleRow,columns))
+        }
+        try require(hingeLoss[0] < 0.12 && hingeLoss[0] < hingeLoss[1]*0.8,
+            "Flex: the early hinge shadow arrived at full strength.")
         return ["flexTopSilhouetteRows":["centre":middle,"left":left,"right":right],
                 "flexLitWidthTopVersusHinge":[high,low],"flexSourceLineRows":lines,"flexLineGaps":gaps,
-                "flexReflectionPeakColumn":peakX,"flexLitHeightAt75And95":[early,late]]
+                "flexReflectionPeakColumn":peakX,"flexLitHeightAt75And95":[early,late],
+                "flexEarlyHingeShadowLoss":hingeLoss]
     }
 
     /// Iris: the desktop stays exactly where it is inside the aperture, dark blades
@@ -529,11 +734,30 @@ import FoldCore
         } }
         try require(bladeMax <= 12,"Iris: the blades are still visible at complete closure.")
         try require(brightCount(shut,100) < W*H/1500,"Iris: too much of the desktop survives at closure.")
+        // Hold blade geometry fixed so only optical defocus can change the
+        // checker contrast in a narrow band just inside the right-hand rim.
+        u.progress = 0.5; u.shadow = 0; u.blur = 0.65; u.defocus = 0
+        let apertureMask = try render(renderer,white,plate,u)
+        var rimSamples: [(Int,Int)] = []
+        for y in 0..<H {
+            guard let edge = (W/2..<W-40).last(where:{ apertureMask.gray($0,y) >= 250 }),
+                  apertureMask.gray(W-40,y) < 250, edge > W/2+40 else { continue }
+            for x in (edge-30)..<(edge-5) { rimSamples.append((x,y)) }
+        }
+        try require(rimSamples.count > 100,"Iris: no interior rim samples for the blur check.")
+        var rimContrast: [Double] = []
+        for defocus: Float in [0.16,0.4,0.8] {
+            u.defocus = defocus
+            let frame = try render(renderer,checker,plate,u)
+            rimContrast.append(Double(rimSamples.reduce(0) { $0+abs(frame.gray($1.0+1,$1.1)-frame.gray($1.0,$1.1)) })/Double(rimSamples.count))
+        }
+        try require(rimContrast[0] > rimContrast[1]+0.25 && rimContrast[1] > rimContrast[2]+0.25,
+            "Iris: rim blur stopped progressing after the early defocus range.")
         return ["irisFixedDesktopBox":["x":box.x,"y":box.y,"width":columns*2,"height":H-box.y],
                 "irisSeamSteps":seams,"irisApertureFacets":facets,"irisTwistDegrees":twist,
                 "irisApertureAreaByProgress":closingCounts,
                 "irisApertureCentroid":["x":centroid.x,"y":centroid.y],
-                "irisBladeMaximumAtClosure":bladeMax]
+                "irisBladeMaximumAtClosure":bladeMax,"irisProgressiveRimContrast":rimContrast]
     }
 
     /// Native-resolution cost for every effect, worst case: a new source frame
@@ -687,7 +911,53 @@ import FoldCore
         try require(beforeReuse.gray(w/2,h/2) == 255 && afterReuse.gray(w/2,h/2) == 0,
             "Recycled source retained stale blur pixels.")
 
+        try require(MemoryLayout<FoldUniforms>.stride == 48, "Swift and Metal uniform layout must match.")
+        var gradualOnset: [[String:Any]] = []
+        for reference: Double in [45,60,90,105,128,140] {
+            for delta: Double in [0,1,2,3,5,10,15] {
+                let state = FoldVisualState.at(angle:reference-delta,reference:reference)
+                var u = FoldUniforms();u.progress = Float(state.progress);u.defocus = Float(state.defocus)
+                u.shadow = 0;u.blur = 0
+                let sharpFrame = try render(renderer,checker,testTarget,u)
+                u.blur = 0.65
+                let softFrame = try render(renderer,checker,testTarget,u)
+                let ratio = variation(softFrame,rows:topRows)/variation(sharpFrame,rows:topRows)
+                if delta <= 3 { try require(ratio > 0.95, "A tiny bend became too blurry.") }
+                if delta == 15 { try require(ratio < 0.75, "Fifteen degrees must be visibly more defocused.") }
+                gradualOnset.append(["referenceAngle":reference,"delta":delta,"defocus":state.defocus,"contrastRatio":ratio])
+                if reference == 90 {
+                    try save(try render(renderer,input,surface,u),output.appendingPathComponent("gradual-\(Int(delta))-degrees.png"))
+                }
+            }
+        }
+        var clearChecks: [[String:Any]] = []
+        for effect in FoldEffect.allCases {
+            var animation = FoldVisualAnimation()
+            let target = FoldVisualState.at(angle:75,reference:90)
+            for tick in 0...120 { _ = animation.sample(target:target,at:Double(tick)/120) }
+            _ = animation.sample(target:.clear,at:1)
+            var finalPixels: [UInt8] = []
+            for time in [0.0,0.15,0.3,0.45,0.5,0.55,0.59,0.601] {
+                let state = animation.sample(target:.clear,at:1+time)
+                var u = FoldUniforms();u.effect = effect.shaderIndex
+                u.progress = Float(state.progress);u.defocus = Float(state.defocus);u.coverage = Float(state.coverage);u.tilt = Float(state.tilt)
+                let frame = try render(renderer,input,surface,u)
+                try require(stride(from:3,to:frame.pixels.count,by:4).allSatisfy { frame.pixels[$0] == 255 }, "Clear transition lost opacity.")
+                if time == 0.59 {
+                    let jump = zip(frame.pixels,openPixels).map { abs(Int($0)-Int($1)) }.max() ?? 0
+                    try require(jump <= 5, "Final clear handoff retained a visible jump.")
+                    clearChecks.append(["effect":effect.persistedIdentifier,"lastFrameMaxChannelDifference":jump])
+                }
+                if time == 0 || time == 0.3 || time == 0.55 || time == 0.601 {
+                    try save(frame,output.appendingPathComponent("clear-\(effect.persistedIdentifier)-\(Int(time*1000)).png"))
+                }
+                finalPixels = frame.pixels
+            }
+            try require(finalPixels == openPixels, "Clearing did not restore exact original pixels.")
+        }
+
         let effects = try checkEffects(device,renderer,input,output)
+        let resources = try checkResourceReuse(device,renderer)
 
         // Both input AND output are native size, including pyramid rebuild cost.
         let nativeInput = try renderer.makePreviewTexture(width:3024,height:1964)
@@ -715,11 +985,12 @@ import FoldCore
         cachedTimes.sort()
         try require(renderer.blurBuildCount == beforeCachedBenchmark+1, "Static native frames rebuilt the blur.")
         let effectTimes = try benchmarkEffects(device,renderer,nativeInput,nativeTarget)
-        let report: [String: Any] = ["version":"0.1.5","gpu":device.name,"frameChecks":checkpoints,
+        let report: [String: Any] = ["version":"0.1.12","gpu":device.name,"gradualOnset":gradualOnset,"clearTransitionChecks":clearChecks,"clearDurationSeconds":FoldVisualAnimation.clearDuration,"frameChecks":checkpoints,
             "effectCatalog":FoldEffect.allCases.map { ["id":$0.persistedIdentifier,"shaderIndex":Int($0.shaderIndex),
                 "title":$0.title,"prefiltersSource":$0.needsPrefilteredSource] },
             "effectChecks":effects,"effectNativeGPUTimes":effectTimes,
-            "effectNativeInputAndOutput":"3024 × 1964 for all five effects",
+            "resourceReuseChecks":resources,
+            "effectNativeInputAndOutput":"3024 × 1964 for all \(FoldEffect.allCases.count) effects",
             "pixelIdentityAndReopen":true,"opaqueAndClosedBlack":true,"reduceMotion":true,"enlargement":growth,
             "topContrastRatio":topRatio,"hingeContrastRatio":hingeRatio,
             "ninetyDegreeTopContrastRatio":ninetyRatio,"stationaryNinetyDegreesExactPixels":true,
@@ -734,14 +1005,17 @@ import FoldCore
         try json.write(to:output.appendingPathComponent("render-check.json"))
         print(String(data:json,encoding:.utf8)!)
 
-        if args.contains("--animation") {
+        if args.contains("--animation") || args.contains("--ghost-animation") {
             let animatedTarget = try target(device,960,624)
-            for effect in FoldEffect.allCases {
+            for effect in FoldEffect.allCases where !args.contains("--ghost-animation") || effect == .ghost {
                 let directory = output.appendingPathComponent("animation/\(effect.rawValue)")
                 try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
                 for frame in 0..<180 {
                     var u = FoldUniforms(); u.effect = effect.shaderIndex
-                    u.progress = Float(pow(sin(Double(frame)/179 * .pi),2))
+                    if effect == .ghost {
+                        let state = FoldVisualState.at(angle:105-65*pow(sin(Double(frame)/179 * .pi),2),reference:105)
+                        u.progress = Float(state.progress);u.defocus = Float(state.defocus);u.tilt = Float(state.tilt)
+                    } else { u.progress = Float(pow(sin(Double(frame)/179 * .pi),2)) }
                     try save(render(renderer,input,animatedTarget,u),directory.appendingPathComponent(String(format:"frame-%03d.png",frame)))
                 }
             }

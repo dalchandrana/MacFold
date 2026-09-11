@@ -4,7 +4,7 @@ import Foundation
 /// `shaderIndex` is the explicit numeric contract with the Metal fragment shader.
 /// Neither may be renumbered: saved selections and the shader switch depend on both.
 public enum FoldEffect: String, CaseIterable, Sendable, Identifiable {
-    case duo, roll, shutter, flex, iris
+    case duo, ghost, roll, shutter, flex, iris
 
     public static let fallback = FoldEffect.duo
 
@@ -15,6 +15,7 @@ public enum FoldEffect: String, CaseIterable, Sendable, Identifiable {
     public var shaderIndex: UInt32 {
         switch self {
         case .duo: return 0
+        case .ghost: return 5
         case .roll: return 1
         case .shutter: return 2
         case .flex: return 3
@@ -36,6 +37,7 @@ public enum FoldEffect: String, CaseIterable, Sendable, Identifiable {
     public var title: String {
         switch self {
         case .duo: return "Duo"
+        case .ghost: return "Ghost"
         case .roll: return "Roll"
         case .shutter: return "Shutter"
         case .flex: return "Flex"
@@ -46,6 +48,7 @@ public enum FoldEffect: String, CaseIterable, Sendable, Identifiable {
     public var symbol: String {
         switch self {
         case .duo: return "macbook"
+        case .ghost: return "aqi.medium"
         case .roll: return "scroll"
         case .shutter: return "square.stack.3d.down.right"
         case .flex: return "rectangle.compress.vertical"
@@ -56,6 +59,7 @@ public enum FoldEffect: String, CaseIterable, Sendable, Identifiable {
     public var summary: String {
         switch self {
         case .duo: return "The desktop swells around the hinge as the lid closes."
+        case .ghost: return "The desktop holds its resting plane as the lid tilts and gently falls out of focus."
         case .roll: return "The desktop curls into a roll that travels down to the hinge."
         case .shutter: return "Four rigid panels telescope behind each other into the hinge."
         case .flex: return "One bowing flexible display collapses toward the hinge."
@@ -63,7 +67,7 @@ public enum FoldEffect: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Duo keeps its original sharp path when Softness is zero. The bowed and
-    /// rolled surfaces minify the source, so they need the pyramid for prefiltering.
+    /// Duo can skip the pyramid with Softness off. Effects that minify
+    /// the source still need it for prefiltering at zero Softness.
     public var needsPrefilteredSource: Bool { self != .duo }
 }

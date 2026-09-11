@@ -3,8 +3,7 @@ import MetalKit
 import CoreVideo
 import FoldCore
 
-/// 32 bytes, mirrored field for field by `Uniforms` in `FoldShader.source`.
-/// The final slot is the effect index rather than padding.
+/// 48 bytes, mirrored field for field by `Uniforms` in `FoldShader.source`.
 struct FoldUniforms: Equatable {
     var progress: Float = 0
     var perspective: Float = 0.7
@@ -13,6 +12,12 @@ struct FoldUniforms: Equatable {
     var size = SIMD2<Float>(1, 1)
     var fadeOnly: Float = 0
     var effect: UInt32 = FoldEffect.fallback.shaderIndex
+    // A negative value retains normalized-progress fixtures; app paths provide physical defocus.
+    var defocus: Float = -1
+    var coverage: Float = 1
+    // Negative values keep normalized-progress fixtures convenient. App paths supply radians.
+    var tilt: Float = -1
+    var reserved: Float = 0
 
     var selectedEffect: FoldEffect { FoldEffect.resolve(shaderIndex: effect) }
 }
@@ -20,15 +25,62 @@ struct FoldUniforms: Equatable {
 final class FrameStore: @unchecked Sendable {
     private let lock = NSLock()
     private var buffer: CVPixelBuffer?
-    private var receivedAt: TimeInterval = 0
     private var revision: UInt64 = 0
+    private var acceptedStream: ObjectIdentifier?
     func put(_ value: CVPixelBuffer) {
-        lock.lock(); buffer = value; receivedAt = ProcessInfo.processInfo.systemUptime; revision &+= 1; lock.unlock()
+        lock.lock(); buffer = value; revision &+= 1; lock.unlock()
     }
-    func get() -> (CVPixelBuffer?, TimeInterval, UInt64) {
-        lock.lock(); defer { lock.unlock() }; return (buffer, receivedAt, revision)
+    func get() -> (CVPixelBuffer?, UInt64) {
+        lock.lock(); defer { lock.unlock() }; return (buffer, revision)
     }
-    func clear() { lock.lock(); buffer = nil; receivedAt = 0; revision &+= 1; lock.unlock() }
+    var hasFrame: Bool { lock.lock(); defer { lock.unlock() }; return buffer != nil }
+    func acceptStream(_ stream: ObjectIdentifier) {
+        lock.lock(); acceptedStream = stream; buffer = nil; revision &+= 1; lock.unlock()
+    }
+    func invalidateStream() {
+        lock.lock(); acceptedStream = nil; buffer = nil; revision &+= 1; lock.unlock()
+    }
+    /// Check identity and replace the frame under the same lock as stop().
+    /// Nil means rejected; true means this stream has just regained a frame.
+    func put(_ value: CVPixelBuffer, from stream: ObjectIdentifier) -> Bool? {
+        lock.lock(); defer { lock.unlock() }
+        guard acceptedStream == stream else { return nil }
+        let first = buffer == nil
+        buffer = value; revision &+= 1
+        return first
+    }
+    func clear(from stream: ObjectIdentifier) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard acceptedStream == stream else { return false }
+        let changed = buffer != nil; buffer = nil; revision &+= 1
+        return changed
+    }
+}
+
+/// Immutable pipelines are shared; command queues and mutable textures stay per renderer.
+@MainActor private final class FoldPipelines {
+    private static var devices: [ObjectIdentifier:FoldPipelines] = [:]
+    let render: MTLRenderPipelineState
+    let downsample: MTLComputePipelineState
+    static func shared(for device: MTLDevice) throws -> FoldPipelines {
+        let key = ObjectIdentifier(device)
+        if let existing = devices[key] { return existing }
+        let pipelines = try FoldPipelines(device:device)
+        devices[key] = pipelines
+        return pipelines
+    }
+    private init(device: MTLDevice) throws {
+        let library = try device.makeLibrary(source:FoldShader.source,options:nil)
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = library.makeFunction(name:"foldVertex")
+        descriptor.fragmentFunction = library.makeFunction(name:"foldFragment")
+        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        render = try device.makeRenderPipelineState(descriptor:descriptor)
+        guard let function = library.makeFunction(name:"foldDownsample") else {
+            throw AppError.message("Blur shader unavailable.")
+        }
+        downsample = try device.makeComputePipelineState(function:function)
+    }
 }
 
 final class FoldRenderer: NSObject, MTKViewDelegate {
@@ -42,11 +94,19 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
     private var renderedRevision: UInt64?
     private var renderedUniforms: FoldUniforms?
     private var cache: CVMetalTextureCache?
+    private var importedBuffer: CVPixelBuffer?
+    private var importedTexture: CVMetalTexture?
+    private var importedRevision: UInt64?
     private let inFlight = DispatchSemaphore(value: 3)
     var frames: FrameStore?
     var fallback: MTLTexture?
     var parameters: () -> FoldUniforms = { FoldUniforms() }
-    var animatedProgress: (() -> Double?)?
+    var animatedState: (() -> FoldVisualState?)?
+    var blendsWithDesktop = false
+    private var animation = FoldVisualAnimation()
+    private var presentationGeneration: UInt64 = 0
+    private var needsPresentationCallback = true
+    var reportsEveryPresentation = false
     var pausesWhenSettled = false
     var keepsAnimating: () -> Bool = { false }
     var onFailure: ((String) -> Void)?
@@ -56,22 +116,17 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
     private(set) var drawnFrames = 0
     private(set) var skippedFrames = 0
     private(set) var blurBuildCount = 0
+    private(set) var textureImportCount = 0
     private(set) var lastGPUTimeMS: Double = 0
+    var transientTextureBytes: Int { blurPyramid?.allocatedSize ?? 0 }
 
-    init(device: MTLDevice) throws {
+    @MainActor init(device: MTLDevice) throws {
         self.device = device
         guard let queue = device.makeCommandQueue() else { throw AppError.message("Metal command queue unavailable.") }
         self.queue = queue
-        let library = try device.makeLibrary(source: FoldShader.source, options: nil)
-        let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.vertexFunction = library.makeFunction(name: "foldVertex")
-        descriptor.fragmentFunction = library.makeFunction(name: "foldFragment")
-        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
-        guard let downsample = library.makeFunction(name: "foldDownsample") else {
-            throw AppError.message("Blur shader unavailable.")
-        }
-        downsamplePipeline = try device.makeComputePipelineState(function: downsample)
+        let pipelines = try FoldPipelines.shared(for:device)
+        pipeline = pipelines.render
+        downsamplePipeline = pipelines.downsample
         super.init()
         guard CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &cache) == kCVReturnSuccess else {
             throw AppError.message("Metal texture cache unavailable.")
@@ -86,17 +141,48 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         view.preferredFramesPerSecond = 60
         view.delegate = self
         view.isPaused = false
-        view.enableSetNeedsDisplay = true
+        view.enableSetNeedsDisplay = false
     }
 
     func resetProgress(to value: Double) {
         progress = value; lastTime = ProcessInfo.processInfo.systemUptime
         renderedUniforms = nil
+        animation.reset()
+        invalidatePresentation()
+    }
+
+    func invalidatePresentation() { presentationGeneration &+= 1; needsPresentationCallback = true }
+
+    /// Completed or queued Metal commands retain their own resources. Clearing
+    /// our references lets the desktop's full-size buffers retire after the last
+    /// command, while keeping the compiled pipelines ready for the next movement.
+    func releaseTransientResources() {
+        invalidatePresentation()
+        blurLevels.removeAll(); blurPyramid = nil; blurredRevision = nil
+        importedTexture = nil; importedBuffer = nil; importedRevision = nil
+        renderedUniforms = nil; renderedRevision = nil
+        if let cache { CVMetalTextureCacheFlush(cache,0) }
+    }
+
+    /// The same captured frame can be presented at several lid angles. Import it
+    /// once, retaining both its pixel buffer and Core Video texture until replaced.
+    func importFrame(_ pixelBuffer: CVPixelBuffer, revision: UInt64) throws -> CVMetalTexture {
+        if importedRevision == revision, importedBuffer === pixelBuffer, let importedTexture { return importedTexture }
+        guard let cache else { throw AppError.message("Metal texture cache unavailable.") }
+        var cvTexture: CVMetalTexture?
+        let result = CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault,cache,pixelBuffer,
+            nil,.bgra8Unorm,CVPixelBufferGetWidth(pixelBuffer),CVPixelBufferGetHeight(pixelBuffer),0,&cvTexture)
+        guard result == kCVReturnSuccess, let cvTexture, CVMetalTextureGetTexture(cvTexture) != nil else {
+            throw AppError.message("The current desktop frame could not be prepared for Metal.")
+        }
+        importedBuffer = pixelBuffer; importedTexture = cvTexture; importedRevision = revision
+        textureImportCount += 1
+        return cvTexture
     }
 
     func wake(_ view: MTKView) {
         guard view.window?.occlusionState.contains(.visible) == true else { return }
-        if view.isPaused { lastTime = ProcessInfo.processInfo.systemUptime }
+        if view.isPaused { lastTime = ProcessInfo.processInfo.systemUptime; animation.prime(at:lastTime) }
         view.isPaused = false
     }
 
@@ -107,40 +193,53 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         guard view.window?.isVisible == true, inFlight.wait(timeout: .now()) == .success else { return }
         var committed = false
         defer { if !committed { inFlight.signal() } }
-        var cvTexture: CVMetalTexture?
         let frame = frames?.get()
         let pixelBuffer = frame?.0
-        let revision = pixelBuffer == nil ? 0 : frame!.2
-        var texture = fallback
-        if let pixelBuffer, let cache {
-            let result = CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, cache, pixelBuffer,
-                nil, .bgra8Unorm, CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer), 0, &cvTexture)
-            if result == kCVReturnSuccess, let cvTexture { texture = CVMetalTextureGetTexture(cvTexture) }
-        }
-        guard let texture else { return }
+        let revision = pixelBuffer == nil ? 0 : frame!.1
+        guard pixelBuffer != nil || fallback != nil else { return }
         let now = ProcessInfo.processInfo.systemUptime
         var uniforms = parameters()
-        let target = Double(uniforms.progress)
-        progress = animatedProgress?() ?? FoldMath.smooth(current: progress, target: Double(uniforms.progress), dt: min(0.1, now-lastTime))
+        let target = uniforms.progress > 0 ? FoldVisualState(progress:Double(uniforms.progress),
+            defocus:Double(max(0,uniforms.defocus)),
+            tilt:Double(uniforms.tilt >= 0 ? uniforms.tilt : uniforms.progress * .pi/2)) : .clear
+        let visual = animatedState?() ?? animation.sample(target:target,at:now)
+        progress = visual.progress
         lastTime = now
-        uniforms.progress = Float(progress)
+        uniforms.progress = Float(visual.progress)
+        uniforms.defocus = Float(visual.defocus)
+        uniforms.tilt = Float(visual.tilt)
+        uniforms.coverage = blendsWithDesktop ? Float(visual.coverage) : 1
         uniforms.size = SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height))
-        let settled = abs(progress-target) < 0.0001 && !keepsAnimating()
+        let settled = visual.isNear(target) && !keepsAnimating()
         if renderedRevision == revision && renderedUniforms == uniforms {
             skippedFrames += 1
             if pausesWhenSettled && settled { view.isPaused = true }
             return
         }
+        var cvTexture: CVMetalTexture?
+        var texture = fallback
+        if let pixelBuffer {
+            do {
+                cvTexture = try importFrame(pixelBuffer,revision:revision)
+                texture = cvTexture.flatMap { CVMetalTextureGetTexture($0) }
+            } catch { onFailure?(error.localizedDescription); return }
+        }
+        guard let texture else { return }
         guard let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
               let command = queue.makeCommandBuffer() else { return }
         do { try encode(command: command, pass: pass, texture: texture, uniforms: uniforms, sourceRevision:revision) }
         catch { blurredRevision = nil; renderedUniforms = nil; onFailure?(error.localizedDescription); return }
         let retainedTexture = cvTexture
+        let generation = presentationGeneration
+        let reportsPresentation = onPresented != nil && (needsPresentationCallback || reportsEveryPresentation)
         command.addCompletedHandler { [weak self, inFlight, pixelBuffer, retainedTexture] buffer in
             withExtendedLifetime((pixelBuffer, retainedTexture)) {}
             inFlight.signal()
+            // Normal successful frames need no UI work after the first reveal.
+            // Errors always return to main; synthetic checks retain every callback.
+            guard reportsPresentation || buffer.status == .error else { return }
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.presentationGeneration == generation else { return }
                 if buffer.status == .error {
                     self.blurredRevision = nil; self.renderedUniforms = nil
                     self.onFailure?(buffer.error?.localizedDescription ?? "Metal rendering failed.")
@@ -152,6 +251,7 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         command.present(drawable)
         committed = true
         command.commit()
+        needsPresentationCallback = false
         drawnFrames += 1
         renderedRevision = revision; renderedUniforms = uniforms
         if pausesWhenSettled && settled { view.isPaused = true }
@@ -203,8 +303,8 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
 
     func encode(command: MTLCommandBuffer, pass: MTLRenderPassDescriptor, texture: MTLTexture, uniforms: FoldUniforms, sourceRevision: UInt64? = nil) throws {
         let moving = uniforms.progress > 0.00001 && uniforms.progress < 1 && uniforms.fadeOnly < 0.5
-        // Duo keeps its original condition exactly. The curved and telescoping
-        // surfaces minify the source, so they read the pyramid even at zero Softness.
+        // Duo skips the pyramid at zero Softness. Geometrically minified effects,
+        // including Ghost, still need it to keep fine source pixels stable.
         let needsBlur = moving && (uniforms.blur > 0 || uniforms.selectedEffect.needsPrefilteredSource)
         let blurred = needsBlur ? try prepareBlur(command: command, input: texture, revision:sourceRevision) : texture
         guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw AppError.message("Render encoder unavailable.") }
