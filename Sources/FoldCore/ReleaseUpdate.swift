@@ -61,7 +61,7 @@ public enum UpdateHandoff {
             if hasAcknowledged() { return }
             try await Task.sleep(nanoseconds:100_000_000)
         }
-        throw UpdateError.invalid("The update helper could not start safely. Mac Duo is still running; please try again or install with Finder.")
+        throw UpdateError.invalid("The update helper could not start safely. Mac Fold is still running; please try again or install with Finder.")
     }
 }
 
@@ -95,9 +95,9 @@ public struct GitHubRelease: Decodable, Sendable {
 }
 
 public struct ReleaseUpdate: Sendable {
-    public static let repository = "DhananjayBhosale/MacDuo"
-    public static let archiveName = "Mac-Duo-mac.zip"
-    public static let checksumName = "Mac-Duo-SHA256SUMS.txt"
+    public static let repository = "dalchandrana/MacFold"
+    public static let archiveName = "Mac-Fold-mac.zip"
+    public static let checksumName = "Mac-Fold-SHA256SUMS.txt"
     public static let maximumArchiveBytes = 100 * 1024 * 1024
     public let tag: String
     public let version: ReleaseVersion
@@ -111,7 +111,7 @@ public struct ReleaseUpdate: Sendable {
         let release = try JSONDecoder().decode(GitHubRelease.self,from:data)
         guard !release.draft, !release.prerelease,
               let version = ReleaseVersion(release.tag_name) else {
-            throw UpdateError.invalid("GitHub did not return a stable Mac Duo release.")
+            throw UpdateError.invalid("GitHub did not return a stable Mac Fold release.")
         }
         guard version > current else { return nil }
         func asset(_ name: String, maximum: Int) throws -> GitHubRelease.Asset {
@@ -119,7 +119,7 @@ public struct ReleaseUpdate: Sendable {
             guard matches.count == 1, let value = matches.first, value.size > 0, value.size <= maximum,
                   let url = URL(string:value.browser_download_url),
                   url.absoluteString == "https://github.com/\(repository)/releases/download/\(release.tag_name)/\(name)" else {
-                throw UpdateError.invalid("The release is missing a valid Mac Duo installer or checksum. Open the release on GitHub instead.")
+                throw UpdateError.invalid("The release is missing a valid Mac Fold installer or checksum. Open the release on GitHub instead.")
             }
             return value
         }
@@ -222,7 +222,7 @@ public enum UpdateArchive {
                   nameLength > 0, cursor+46+nameLength+extraLength+commentLength <= end,
                   let name = String(data:data[(cursor+46)..<(cursor+46+nameLength)],encoding:.utf8),
                   !name.contains("\\"), !name.contains(":"), !name.unicodeScalars.contains(where: { $0.value < 32 }),
-                  name == "INSTALL.txt" || name.hasPrefix("Mac Duo.app/"),
+                  name == "INSTALL.txt" || name.hasPrefix("Mac Fold.app/") || name.hasPrefix("Mac Duo.app/"),
                   !name.split(separator:"/",omittingEmptySubsequences:false).dropLast(name.hasSuffix("/") ? 1 : 0).contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }),
                   names.insert(name.precomposedStringWithCanonicalMapping.lowercased()).inserted,
                   !name.hasSuffix("/") || (expanded == 0 && compressed == 0) else { throw reject() }
@@ -241,8 +241,9 @@ public enum UpdateArchive {
                                  checksum:UInt32(try u32(cursor+16)),payload:payload..<(payload+compressed)))
             cursor += 46+nameLength+extraLength+commentLength
         }
-        guard cursor == end, names.contains("mac duo.app/contents/info.plist"),
-              names.contains("mac duo.app/contents/macos/macduo") else { throw reject() }
+        guard cursor == end,
+              (names.contains("mac fold.app/contents/info.plist") || names.contains("mac duo.app/contents/info.plist")),
+              (names.contains("mac fold.app/contents/macos/macfold") || names.contains("mac duo.app/contents/macos/macduo")) else { throw reject() }
         return entries
     }
 }

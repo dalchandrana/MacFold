@@ -6,7 +6,7 @@ import FoldCore
 @MainActor final class AppUpdater: ObservableObject {
     @Published private(set) var isBusy = false
     @Published private(set) var buttonTitle = "Check for updates"
-    private let releases = URL(string:"https://github.com/DhananjayBhosale/MacDuo/releases/latest")!
+    private let releases = URL(string:"https://github.com/dalchandrana/MacFold/releases/latest")!
 
     func checkForUpdates() {
         guard !isBusy else { return }
@@ -15,12 +15,12 @@ import FoldCore
             defer { isBusy = false;buttonTitle = "Check for updates" }
             do {
                 guard let update = try await Self.findUpdate() else {
-                    show("You’re up to date",message:"Mac Duo \(Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "") is the latest stable release.")
+                    show("You’re up to date",message:"Mac Fold \(Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "") is the latest stable release.")
                     return
                 }
                 let alert = NSAlert()
-                alert.messageText = "Mac Duo \(update.tag) is available"
-                alert.informativeText = "Download, verify, and install the update, then reopen Mac Duo. Your settings will be kept. macOS may ask you to allow the updated app or Screen Recording again."
+                alert.messageText = "Mac Fold \(update.tag) is available"
+                alert.informativeText = "Download, verify, and install the update, then reopen Mac Fold. Your settings will be kept. macOS may ask you to allow the updated app or Screen Recording again."
                 alert.addButton(withTitle:"Install & Relaunch")
                 alert.addButton(withTitle:"Later")
                 alert.addButton(withTitle:"View release")
@@ -43,7 +43,7 @@ import FoldCore
                 }
             } catch {
                 let alert = NSAlert()
-                alert.messageText = "Mac Duo could not update"
+                alert.messageText = "Mac Fold could not update"
                 alert.informativeText = error.localizedDescription
                 alert.addButton(withTitle:"OK");alert.addButton(withTitle:"Open downloads")
                 NSApp.activate(ignoringOtherApps:true)
@@ -83,7 +83,7 @@ private final class UpdateDownload: NSObject, URLSessionDataDelegate, @unchecked
             let session = URLSession(configuration:configuration,delegate:download,delegateQueue:nil)
             download.session = session
             var request = URLRequest(url:url)
-            request.setValue("MacDuo-Updater",forHTTPHeaderField:"User-Agent")
+            request.setValue("MacFold-Updater",forHTTPHeaderField:"User-Agent")
             request.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
             session.dataTask(with:request).resume()
         }
@@ -154,12 +154,13 @@ enum UpdateInstallation {
         let destination = Bundle.main.bundleURL.standardizedFileURL
         let roots = [URL(fileURLWithPath:"/Applications",isDirectory:true),
                      FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications",isDirectory:true)]
-        guard roots.contains(destination.deletingLastPathComponent()), destination.lastPathComponent == "Mac Duo.app",
+        guard roots.contains(destination.deletingLastPathComponent()),
+              ["Mac Fold.app", "Mac Duo.app"].contains(destination.lastPathComponent),
               destination.resolvingSymlinksInPath() == destination,
               (try? destination.resourceValues(forKeys:[.volumeIsReadOnlyKey]).volumeIsReadOnly) == false,
               FileManager.default.isWritableFile(atPath:destination.path),
               FileManager.default.isWritableFile(atPath:destination.deletingLastPathComponent().path) else {
-            throw UpdateError.invalid("Move Mac Duo to Applications and open it there before updating. If Applications needs an administrator password, install the downloaded update with Finder.")
+            throw UpdateError.invalid("Move Mac Fold to Applications and open it there before updating. If Applications needs an administrator password, install the downloaded update with Finder.")
         }
         return destination
     }
@@ -168,21 +169,24 @@ enum UpdateInstallation {
         try UpdateArchive.validate(archive)
         let files = FileManager.default, token = UUID().uuidString
         let folder = cache.appendingPathComponent(token,isDirectory:true)
-        let staging = destination.deletingLastPathComponent().appendingPathComponent(".MacDuo-update-\(token)",isDirectory:true)
+        let staging = destination.deletingLastPathComponent().appendingPathComponent(".MacFold-update-\(token)",isDirectory:true)
         try files.createDirectory(at:folder,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
         do {
             try files.createDirectory(at:staging,withIntermediateDirectories:false,attributes:[.posixPermissions:0o700])
             try UpdateArchive.extract(archive,into:staging)
-            let candidate = staging.appendingPathComponent("Mac Duo.app",isDirectory:true)
+            let candidate = files.fileExists(atPath:staging.appendingPathComponent("Mac Fold.app").path)
+                ? staging.appendingPathComponent("Mac Fold.app",isDirectory:true)
+                : staging.appendingPathComponent("Mac Duo.app",isDirectory:true)
             try validateBundle(candidate,version:update.version)
             // URLSession is not a browser download and does not add quarantine itself.
             // Preserve macOS's downloaded-app assessment when LaunchServices opens it.
-            let quarantine = "0081;\(String(Int(Date().timeIntervalSince1970),radix:16));Mac Duo;\(token)"
+            let quarantine = "0081;\(String(Int(Date().timeIntervalSince1970),radix:16));Mac Fold;\(token)"
             let marked = quarantine.withCString { value in
                 setxattr(candidate.path,"com.apple.quarantine",value,strlen(value),0,0)
             }
             guard marked == 0 else { throw UpdateError.invalid("macOS could not mark the downloaded app for its normal security check. Please install it with Finder.") }
-            let digest = try hash(candidate.appendingPathComponent("Contents/MacOS/MacDuo"))
+            let exeName = (try? PropertyListSerialization.propertyList(from:Data(contentsOf:candidate.appendingPathComponent("Contents/Info.plist")),format:nil) as? [String:Any])?["CFBundleExecutable"] as? String ?? "MacFold"
+            let digest = try hash(candidate.appendingPathComponent("Contents/MacOS/\(exeName)"))
             let job = UpdateJob(token:token,destination:destination.path,staging:staging.path,
                                 version:update.tag,parentPID:ProcessInfo.processInfo.processIdentifier,executableHash:digest,installAfterExit:installAfterExit)
             try JSONEncoder().encode(job).write(to:folder.appendingPathComponent("job.json"),options:.atomic)
@@ -196,7 +200,8 @@ enum UpdateInstallation {
     }
     @discardableResult fileprivate static func startHelper(_ job: UpdateJob) async throws -> Process {
         let helper = Process()
-        helper.executableURL = job.folder.appendingPathComponent("Installer.app/Contents/MacOS/MacDuo")
+        let helperExecutable = (try? PropertyListSerialization.propertyList(from:Data(contentsOf:job.folder.appendingPathComponent("Installer.app/Contents/Info.plist")),format:nil) as? [String:Any])?["CFBundleExecutable"] as? String ?? "MacFold"
+        helper.executableURL = job.folder.appendingPathComponent("Installer.app/Contents/MacOS/\(helperExecutable)")
         helper.arguments = ["--finish-update",job.token]
         helper.standardInput = FileHandle.nullDevice;helper.standardOutput = FileHandle.nullDevice;helper.standardError = FileHandle.nullDevice
         do {
@@ -239,13 +244,14 @@ enum UpdateInstallation {
         let operatingSystem = ProcessInfo.processInfo.operatingSystemVersion
         let currentOS = ReleaseVersion("\(operatingSystem.majorVersion).\(operatingSystem.minorVersion).\(operatingSystem.patchVersion)")!
         guard info?["CFBundleIdentifier"] as? String == "local.lidflow.mac",
-              info?["CFBundleExecutable"] as? String == "MacDuo",
+              ["MacFold", "MacDuo"].contains(info?["CFBundleExecutable"] as? String),
               info?["CFBundlePackageType"] as? String == "APPL",
               let string = info?["CFBundleShortVersionString"] as? String, ReleaseVersion(string) == version,
               let minimum = info?["LSMinimumSystemVersion"] as? String, let minimumVersion = ReleaseVersion(minimum), minimumVersion <= currentOS else {
             throw UpdateError.invalid("The downloaded app has the wrong identity or version, or requires a newer macOS.")
         }
-        let binary = app.appendingPathComponent("Contents/MacOS/MacDuo")
+        let exeName = info?["CFBundleExecutable"] as? String ?? "MacFold"
+        let binary = app.appendingPathComponent("Contents/MacOS/\(exeName)")
         guard files.isExecutableFile(atPath:binary.path) else { throw UpdateError.invalid("The downloaded app is not executable.") }
         #if arch(arm64)
         let architecture = NSBundleExecutableArchitectureARM64
@@ -266,8 +272,9 @@ enum UpdateInstallation {
         let roots = [URL(fileURLWithPath:"/Applications",isDirectory:true),
                      FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications",isDirectory:true)]
         guard job.token == token, job.parentPID > 1, roots.contains(destination.deletingLastPathComponent()),
-              destination.lastPathComponent == "Mac Duo.app", destination.resolvingSymlinksInPath() == destination,
-              job.staging == destination.deletingLastPathComponent().appendingPathComponent(".MacDuo-update-\(token)",isDirectory:true).path else {
+              ["Mac Fold.app", "Mac Duo.app"].contains(destination.lastPathComponent), destination.resolvingSymlinksInPath() == destination,
+              (job.staging == destination.deletingLastPathComponent().appendingPathComponent(".MacFold-update-\(token)",isDirectory:true).path ||
+               job.staging == destination.deletingLastPathComponent().appendingPathComponent(".MacDuo-update-\(token)",isDirectory:true).path) else {
             throw UpdateError.invalid("Invalid update destination.")
         }
         return job
@@ -277,9 +284,11 @@ enum UpdateInstallation {
         guard let job = try? readJob(token) else { return 1 }
         let destination = URL(fileURLWithPath:job.destination,isDirectory:true)
         let staging = URL(fileURLWithPath:job.staging,isDirectory:true)
-        let candidate = staging.appendingPathComponent("Mac Duo.app",isDirectory:true)
-        let backup = staging.appendingPathComponent("Previous.app",isDirectory:true)
         let files = FileManager.default
+        let candidate = files.fileExists(atPath:staging.appendingPathComponent("Mac Fold.app").path)
+            ? staging.appendingPathComponent("Mac Fold.app",isDirectory:true)
+            : staging.appendingPathComponent("Mac Duo.app",isDirectory:true)
+        let backup = staging.appendingPathComponent("Previous.app",isDirectory:true)
         var installed = false
         defer {
             // Keep the original app available if a filesystem error prevented restoration.
@@ -292,7 +301,8 @@ enum UpdateInstallation {
                 throw UpdateError.invalid("The prepared update changed location.")
             }
             try validateBundle(candidate,version:version)
-            guard try hash(candidate.appendingPathComponent("Contents/MacOS/MacDuo")) == job.executableHash else {
+            let candExe = (try? PropertyListSerialization.propertyList(from:Data(contentsOf:candidate.appendingPathComponent("Contents/Info.plist")),format:nil) as? [String:Any])?["CFBundleExecutable"] as? String ?? "MacFold"
+            guard try hash(candidate.appendingPathComponent("Contents/MacOS/\(candExe)")) == job.executableHash else {
                 throw UpdateError.invalid("The prepared update changed before the helper started.")
             }
             let acknowledgment = UpdateHelperReady(processID:ProcessInfo.processInfo.processIdentifier,executableHash:job.executableHash)
@@ -302,7 +312,7 @@ enum UpdateInstallation {
             guard job.installAfterExit, kill(job.parentPID,0) != 0 else { return 1 }
             try validateBundle(candidate,version:version)
             let oldInfo = try PropertyListSerialization.propertyList(from:Data(contentsOf:destination.appendingPathComponent("Contents/Info.plist")),format:nil) as? [String:Any]
-            guard try hash(candidate.appendingPathComponent("Contents/MacOS/MacDuo")) == job.executableHash,
+            guard try hash(candidate.appendingPathComponent("Contents/MacOS/\(candExe)")) == job.executableHash,
                   oldInfo?["CFBundleIdentifier"] as? String == "local.lidflow.mac",
                   let old = oldInfo?["CFBundleShortVersionString"] as? String, let oldVersion = ReleaseVersion(old), oldVersion < version else {
                 throw UpdateError.invalid("The installed app changed while the update was downloading.")
@@ -372,7 +382,7 @@ enum UpdateInstallation {
             if FileManager.default.fileExists(atPath:ready.path) { return true }
             let alert = NSAlert()
             alert.messageText = "macOS could not open the update"
-            alert.informativeText = "Your previous Mac Duo is safely backed up. If macOS blocked this downloaded app, go to System Settings → Privacy & Security → Open Anyway, approve Mac Duo there, then try opening it again. You can restore the previous version at any time.\n\n\(error.localizedDescription)"
+            alert.informativeText = "Your previous Mac Fold is safely backed up. If macOS blocked this downloaded app, go to System Settings → Privacy & Security → Open Anyway, approve Mac Fold there, then try opening it again. You can restore the previous version at any time.\n\n\(error.localizedDescription)"
             alert.addButton(withTitle:"Restore Previous")
             alert.addButton(withTitle:"Open Privacy & Security")
             alert.addButton(withTitle:"Try Opening Again")
@@ -451,8 +461,12 @@ enum UpdateInstallation {
         try ReleaseUpdate.verifyChecksum(archive:data,manifest:Data(contentsOf:manifest))
         try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:false,attributes:[.posixPermissions:0o700])
         do {
+            let files = FileManager.default
             try UpdateArchive.extract(data,into:folder)
-            try validateBundle(folder.appendingPathComponent("Mac Duo.app",isDirectory:true),version:version)
+            let appURL = files.fileExists(atPath:folder.appendingPathComponent("Mac Fold.app").path)
+                ? folder.appendingPathComponent("Mac Fold.app",isDirectory:true)
+                : folder.appendingPathComponent("Mac Duo.app",isDirectory:true)
+            try validateBundle(appURL,version:version)
         } catch { try? FileManager.default.removeItem(at:folder);throw error }
     }
 
@@ -460,32 +474,33 @@ enum UpdateInstallation {
     /// readiness functions as a real update, including restoration after launch failure.
     static func checkInstallerFixture(output: URL) throws {
         let files = FileManager.default, folder = output.standardizedFileURL
-        guard folder.path == output.path, folder.lastPathComponent.hasPrefix("MacDuo-update-fixture-"),
+        guard folder.path == output.path,
+              (folder.lastPathComponent.hasPrefix("MacFold-update-fixture-") || folder.lastPathComponent.hasPrefix("MacDuo-update-fixture-")),
               folder.resolvingSymlinksInPath() == folder,
               !folder.path.hasPrefix("/Applications/"), !folder.path.contains("/Applications/"),
               !files.fileExists(atPath:folder.path), let executable = Bundle.main.executableURL else {
-            throw UpdateError.invalid("Choose a new scratch directory named MacDuo-update-fixture-… outside Applications.")
+            throw UpdateError.invalid("Choose a new scratch directory named MacFold-update-fixture-… outside Applications.")
         }
         try files.createDirectory(at:folder,withIntermediateDirectories:false,attributes:[.posixPermissions:0o700])
         func bundle(_ name: String, marker: String) throws -> URL {
             let app = folder.appendingPathComponent(name,isDirectory:true)
             let macOS = app.appendingPathComponent("Contents/MacOS",isDirectory:true)
             try files.createDirectory(at:macOS,withIntermediateDirectories:true)
-            try files.copyItem(at:executable,to:macOS.appendingPathComponent("MacDuo"))
+            try files.copyItem(at:executable,to:macOS.appendingPathComponent("MacFold"))
             try files.createDirectory(at:app.appendingPathComponent("Contents/Resources",isDirectory:true),withIntermediateDirectories:true)
-            let info: [String:Any] = ["CFBundleIdentifier":"local.lidflow.mac.update-fixture", "CFBundleExecutable":"MacDuo",
-                                     "CFBundleName":"Mac Duo Update Fixture", "CFBundlePackageType":"APPL", "LSUIElement":true,
+            let info: [String:Any] = ["CFBundleIdentifier":"local.lidflow.mac.update-fixture", "CFBundleExecutable":"MacFold",
+                                     "CFBundleName":"Mac Fold Update Fixture", "CFBundlePackageType":"APPL", "LSUIElement":true,
                                      "CFBundleShortVersionString":"0.0.1", "CFBundleVersion":"1", "LSMinimumSystemVersion":"13.0"]
             try PropertyListSerialization.data(fromPropertyList:info,format:.xml,options:0).write(to:app.appendingPathComponent("Contents/Info.plist"))
             try Data(marker.utf8).write(to:app.appendingPathComponent("Contents/Resources/fixture-version"))
             try command("/usr/bin/codesign",["--force","--sign","-",app.path])
             return app
         }
-        let destination = try bundle("Mac Duo.app",marker:"old")
+        let destination = try bundle("Mac Fold.app",marker:"old")
         let helper = folder.appendingPathComponent("Installer.app",isDirectory:true)
         try UpdateHandoff.writeHelperBundle(from:destination,to:helper)
         try command("/usr/bin/codesign",["--verify","--deep","--strict",helper.path])
-        let bootstrap = Process();bootstrap.executableURL = helper.appendingPathComponent("Contents/MacOS/MacDuo")
+        let bootstrap = Process();bootstrap.executableURL = helper.appendingPathComponent("Contents/MacOS/MacFold")
         // Exercise the real bundle-copy helper path with sealed Info.plist/resources.
         // No job exists for this UUID, so no installation target can be modified.
         bootstrap.arguments = ["--finish-update",UUID().uuidString]
@@ -508,7 +523,7 @@ enum UpdateInstallation {
             throw UpdateError.invalid("Fixture replacement did not preserve the expected versions.")
         }
         let identity = UpdateBundleIdentity(bundleIdentifier:"local.lidflow.mac.update-fixture",version:ReleaseVersion("0.0.1")!,
-                                           executableHash:try hash(destination.appendingPathComponent("Contents/MacOS/MacDuo")))
+                                           executableHash:try hash(destination.appendingPathComponent("Contents/MacOS/MacFold")))
         let recognized = try launchAndConfirm(folder.appendingPathComponent("SimulatedTranslocation.app",isDirectory:true),
                                              arguments:[],ready:ready,identity:identity)
         guard recognized.processIdentifier == application?.processIdentifier else {
@@ -554,12 +569,12 @@ enum UpdateInstallation {
                 try? Data("ready".utf8).write(to:job.folder.appendingPathComponent("ready"),options:.atomic)
         }
         if CommandLine.arguments.contains("--update-rolled-back") {
-            let alert = NSAlert();alert.messageText = "The previous Mac Duo was restored"
+            let alert = NSAlert();alert.messageText = "The previous Mac Fold was restored"
             alert.informativeText = "The update could not finish opening. You can keep using this version or install the latest release from GitHub."
             NSApp.activate(ignoringOtherApps:true);alert.runModal()
         }
         if CommandLine.arguments.contains("--update-needs-recovery") {
-            let alert = NSAlert();alert.messageText = "Mac Duo kept your previous app safe"
+            let alert = NSAlert();alert.messageText = "Mac Fold kept your previous app safe"
             alert.informativeText = "A file permission or disk error prevented the update from finishing. Your previous app is at:\n\(Bundle.main.bundleURL.path)\nMove it back to Applications with Finder."
             NSApp.activate(ignoringOtherApps:true);alert.runModal()
         }

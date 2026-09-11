@@ -29,7 +29,7 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     @MainActor func verifyAccess() async throws {
         let content = try await availableContent()
         guard !content.displays.isEmpty else { throw AppError.message("No capturable display is available.") }
-        guard ownApplication != nil else { throw AppError.message("Cannot safely exclude Mac Duo from capture. Please reopen the app.") }
+        guard ownApplication != nil else { throw AppError.message("Cannot safely exclude Mac Fold from capture. Please reopen the app.") }
     }
 
     @MainActor func start(displayID: CGDirectDisplayID, width: Int, height: Int, fps: Int) async throws {
@@ -46,7 +46,7 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
             throw AppError.message("The built-in display is not available.")
         }
         // Exclude our own application explicitly, avoiding recursive capture of the overlay.
-        guard let ownApplication else { throw AppError.message("Cannot safely exclude Mac Duo from capture. Please reopen the app.") }
+        guard let ownApplication else { throw AppError.message("Cannot safely exclude Mac Fold from capture. Please reopen the app.") }
         let filter = SCContentFilter(display:display, excludingApplications:[ownApplication], exceptingWindows:[])
         logger.notice("Capture prepared with process exclusion; app active: \(NSApp.isActive,privacy:.public).")
         let config = SCStreamConfiguration()

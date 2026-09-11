@@ -19,4 +19,4 @@ Public builds are ad-hoc signed and not notarized. First launch may require **Sy
 - Avoid bringing an inactive settings window to the front.
 - Remove the old 45-second automatic pause.
 
-For earlier releases, see [GitHub Releases](https://github.com/DhananjayBhosale/MacDuo/releases).
+For earlier releases, see [GitHub Releases](https://github.com/dalchandrana/MacFold/releases).

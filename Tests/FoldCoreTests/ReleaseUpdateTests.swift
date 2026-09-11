@@ -17,19 +17,19 @@ import zlib
 @Test func helperByteCopyDoesNotInheritDownloadMetadataOrAlterCandidateQuarantine() throws {
     let root = try temporaryFolder();defer { try? FileManager.default.removeItem(at:root) }
     let source = root.appendingPathComponent("Source.app",isDirectory:true), helper = root.appendingPathComponent("Installer.app",isDirectory:true), candidate = root.appendingPathComponent("candidate")
-    let executable = source.appendingPathComponent("Contents/MacOS/MacDuo")
+    let executable = source.appendingPathComponent("Contents/MacOS/MacFold")
     try FileManager.default.createDirectory(at:executable.deletingLastPathComponent(),withIntermediateDirectories:true)
     try Data("trusted running helper bytes".utf8).write(to:executable)
     try FileManager.default.setAttributes([.posixPermissions:0o755],ofItemAtPath:executable.path)
     try Data("sealed Info.plist fixture".utf8).write(to:source.appendingPathComponent("Contents/Info.plist"))
     try Data("downloaded candidate".utf8).write(to:candidate)
-    let quarantine = "0081;12345678;Mac Duo;fixture"
+    let quarantine = "0081;12345678;Mac Fold;fixture"
     for file in [source,executable,candidate] {
         let result = quarantine.withCString { setxattr(file.path,"com.apple.quarantine",$0,strlen($0),0,0) }
         #expect(result == 0)
     }
     try UpdateHandoff.writeHelperBundle(from:source,to:helper)
-    let helperExecutable = helper.appendingPathComponent("Contents/MacOS/MacDuo")
+    let helperExecutable = helper.appendingPathComponent("Contents/MacOS/MacFold")
     #expect(try Data(contentsOf:executable) == Data(contentsOf:helperExecutable))
     #expect(try Data(contentsOf:source.appendingPathComponent("Contents/Info.plist")) == Data(contentsOf:helper.appendingPathComponent("Contents/Info.plist")))
     #expect(getxattr(helper.path,"com.apple.quarantine",nil,0,0,0) == -1)
@@ -61,7 +61,7 @@ import zlib
 
 private func release(_ tag: String = "v0.1.12", draft: Bool = false, prerelease: Bool = false,
                      zipURL: String? = nil, size: Int = 2048, duplicate: Bool = false) throws -> Data {
-    let prefix = "https://github.com/DhananjayBhosale/MacDuo/releases/download/\(tag)/"
+    let prefix = "https://github.com/dalchandrana/MacFold/releases/download/\(tag)/"
     let zip: [String:Any] = ["name":ReleaseUpdate.archiveName,"size":size,"browser_download_url":zipURL ?? prefix+ReleaseUpdate.archiveName]
     var assets: [[String:Any]] = [zip,["name":ReleaseUpdate.checksumName,"size":160,"browser_download_url":prefix+ReleaseUpdate.checksumName]]
     if duplicate { assets.append(zip) }
@@ -75,11 +75,11 @@ private func release(_ tag: String = "v0.1.12", draft: Bool = false, prerelease:
     #expect(try ReleaseUpdate.newerRelease(data:release(),installed:"0.2.0") == nil)
     #expect(throws: (any Error).self) { try ReleaseUpdate.newerRelease(data:release(draft:true),installed:"0.1.11") }
     #expect(throws: (any Error).self) { try ReleaseUpdate.newerRelease(data:release(prerelease:true),installed:"0.1.11") }
-    for url in ["http://github.com/DhananjayBhosale/MacDuo/releases/download/v0.1.12/Mac-Duo-mac.zip",
-                "https://github.com.evil.test/DhananjayBhosale/MacDuo/releases/download/v0.1.12/Mac-Duo-mac.zip",
-                "https://github.com/other/MacDuo/releases/download/v0.1.12/Mac-Duo-mac.zip",
-                "https://github.com/DhananjayBhosale/MacDuo/releases/download/v0.1.11/Mac-Duo-mac.zip",
-                "https://github.com/DhananjayBhosale/MacDuo/releases/download/v0.1.12/Mac-Duo-mac.zip?redirect=bad"] {
+    for url in ["http://github.com/dalchandrana/MacFold/releases/download/v0.1.12/Mac-Fold-mac.zip",
+                "https://github.com.evil.test/dalchandrana/MacFold/releases/download/v0.1.12/Mac-Fold-mac.zip",
+                "https://github.com/other/MacFold/releases/download/v0.1.12/Mac-Fold-mac.zip",
+                "https://github.com/dalchandrana/MacFold/releases/download/v0.1.11/Mac-Fold-mac.zip",
+                "https://github.com/dalchandrana/MacFold/releases/download/v0.1.12/Mac-Fold-mac.zip?redirect=bad"] {
         #expect(throws: (any Error).self) { try ReleaseUpdate.newerRelease(data:release(zipURL:url),installed:"0.1.11") }
     }
     #expect(throws: (any Error).self) { try ReleaseUpdate.newerRelease(data:release(size:ReleaseUpdate.maximumArchiveBytes+1),installed:"0.1.11") }
@@ -89,9 +89,9 @@ private func release(_ tag: String = "v0.1.12", draft: Bool = false, prerelease:
 @Test func checksumRequiresExactlyOneMatchingNamedArchive() throws {
     let data = Data("fixture archive".utf8)
     let hash = SHA256.hash(data:data).map { String(format:"%02x",$0) }.joined()
-    let valid = Data("\(hash)  Mac-Duo-mac.zip\n".utf8)
+    let valid = Data("\(hash)  Mac-Fold-mac.zip\n".utf8)
     try ReleaseUpdate.verifyChecksum(archive:data,manifest:valid)
-    try ReleaseUpdate.verifyChecksum(archive:data,manifest:Data("\(hash) *Mac-Duo-mac.zip\n".utf8))
+    try ReleaseUpdate.verifyChecksum(archive:data,manifest:Data("\(hash) *Mac-Fold-mac.zip\n".utf8))
     #expect(throws: (any Error).self) { try ReleaseUpdate.verifyChecksum(archive:Data("tampered".utf8),manifest:valid) }
     #expect(throws: (any Error).self) { try ReleaseUpdate.verifyChecksum(archive:data,manifest:valid+valid) }
     #expect(throws: (any Error).self) { try ReleaseUpdate.verifyChecksum(archive:data,manifest:Data("\(hash)  Other.zip\n".utf8)) }
@@ -129,8 +129,8 @@ private func zip(_ entries: [ZipEntry]) -> Data {
     append32(UInt32(central.count),to:&data);append32(directory,to:&data);append16(0,to:&data)
     return data
 }
-private let requiredEntries = [ZipEntry(name:"Mac Duo.app/Contents/Info.plist"),
-                               ZipEntry(name:"Mac Duo.app/Contents/MacOS/MacDuo",mode:0o100755)]
+private let requiredEntries = [ZipEntry(name:"Mac Fold.app/Contents/Info.plist"),
+                               ZipEntry(name:"Mac Fold.app/Contents/MacOS/MacFold",mode:0o100755)]
 private func temporaryFolder() throws -> URL {
     let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString,isDirectory:true).resolvingSymlinksInPath()
     try FileManager.default.createDirectory(at:url,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
@@ -140,15 +140,15 @@ private func temporaryFolder() throws -> URL {
 @Test func archiveRejectsTraversalSymlinksSpecialFilesAndHeaderMismatch() throws {
     try UpdateArchive.validate(zip(requiredEntries))
     let unsafeEntries = [ZipEntry(name:"../outside"),ZipEntry(name:"/tmp/outside"),
-                         ZipEntry(name:"Mac Duo.app/../../outside"),ZipEntry(name:"Mac Duo.app//file"),
-                         ZipEntry(name:"Mac Duo.app/Contents\\outside"),ZipEntry(name:"Mac Duo.app/file:stream"),
-                         ZipEntry(name:"Mac Duo.app/Contents/link",mode:0o120777),
-                         ZipEntry(name:"Mac Duo.app/Contents/socket",mode:0o140777),
-                         ZipEntry(name:"Mac Duo.app/Contents/setuid",mode:0o104755),
-                         ZipEntry(name:"Mac Duo.app/Contents/encrypted",flags:1),
-                         ZipEntry(name:"Mac Duo.app/Contents/mismatch",localName:"../escape"),
-                         ZipEntry(name:"Mac Duo.app/Contents/bomb",expanded:200*1024*1024),
-                         ZipEntry(name:"Mac Duo.app/Contents/Info.plist")]
+                         ZipEntry(name:"Mac Fold.app/../../outside"),ZipEntry(name:"Mac Fold.app//file"),
+                         ZipEntry(name:"Mac Fold.app/Contents\\outside"),ZipEntry(name:"Mac Fold.app/file:stream"),
+                         ZipEntry(name:"Mac Fold.app/Contents/link",mode:0o120777),
+                         ZipEntry(name:"Mac Fold.app/Contents/socket",mode:0o140777),
+                         ZipEntry(name:"Mac Fold.app/Contents/setuid",mode:0o104755),
+                         ZipEntry(name:"Mac Fold.app/Contents/encrypted",flags:1),
+                         ZipEntry(name:"Mac Fold.app/Contents/mismatch",localName:"../escape"),
+                         ZipEntry(name:"Mac Fold.app/Contents/bomb",expanded:200*1024*1024),
+                         ZipEntry(name:"Mac Fold.app/Contents/Info.plist")]
     for entry in unsafeEntries {
         #expect(throws: (any Error).self) { try UpdateArchive.validate(zip(requiredEntries+[entry])) }
     }
@@ -159,12 +159,12 @@ private func temporaryFolder() throws -> URL {
 @Test func extractionChecksActualSizeCRCAndRefusesExistingOrLinkedDestination() throws {
     let root = try temporaryFolder();defer { try? FileManager.default.removeItem(at:root) }
     try UpdateArchive.extract(zip(requiredEntries),into:root)
-    #expect(try Data(contentsOf:root.appendingPathComponent("Mac Duo.app/Contents/Info.plist")) == Data("fixture".utf8))
-    #expect(FileManager.default.isExecutableFile(atPath:root.appendingPathComponent("Mac Duo.app/Contents/MacOS/MacDuo").path))
+    #expect(try Data(contentsOf:root.appendingPathComponent("Mac Fold.app/Contents/Info.plist")) == Data("fixture".utf8))
+    #expect(FileManager.default.isExecutableFile(atPath:root.appendingPathComponent("Mac Fold.app/Contents/MacOS/MacFold").path))
     #expect(throws: (any Error).self) { try UpdateArchive.extract(zip(requiredEntries),into:root) }
-    for entry in [ZipEntry(name:"Mac Duo.app/Contents/oversized",expanded:1),
-                  ZipEntry(name:"Mac Duo.app/Contents/corrupt",checksum:0),
-                  ZipEntry(name:"Mac Duo.app/Contents/deflate",method:8)] {
+    for entry in [ZipEntry(name:"Mac Fold.app/Contents/oversized",expanded:1),
+                  ZipEntry(name:"Mac Fold.app/Contents/corrupt",checksum:0),
+                  ZipEntry(name:"Mac Fold.app/Contents/deflate",method:8)] {
         let destination = try temporaryFolder();defer { try? FileManager.default.removeItem(at:destination) }
         #expect(throws: (any Error).self) { try UpdateArchive.extract(zip(requiredEntries+[entry]),into:destination) }
     }

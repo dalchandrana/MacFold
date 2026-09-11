@@ -1,0 +1,477 @@
+/* ==========================================================================
+   Mac Fold — Apple Design System Foundation
+   Inspired by Apple.com & Apple Developer Design Language
+   Author: Dalchand Rana (@dalchandrana)
+   ========================================================================== */
+
+:root {
+  /* Color Palette — Apple Space Black / Dark Mode Default */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0c;
+  --bg-tertiary: #141418;
+  --bg-card: rgba(26, 26, 32, 0.65);
+  --bg-card-hover: rgba(36, 36, 46, 0.8);
+  --bg-glass: rgba(18, 18, 22, 0.72);
+  --bg-glass-elevated: rgba(28, 28, 35, 0.85);
+
+  /* Apple Aluminum & Metallic Tones */
+  --metal-space-black: #1a1a1e;
+  --metal-highlight: #3a3a44;
+  --metal-lip: #2d2d34;
+  --metal-notch: #070709;
+
+  /* Typography Colors */
+  --text-primary: #f5f5f7;
+  --text-secondary: #86868b;
+  --text-tertiary: #515154;
+  --text-quaternary: #333336;
+  --text-inverse: #000000;
+
+  /* Mac Fold Brand Accent (International Orange from native macOS UI) */
+  --accent-brand: #ff6b18;
+  --accent-brand-subtle: rgba(255, 107, 24, 0.12);
+  --accent-brand-border: rgba(255, 107, 24, 0.35);
+  --accent-brand-hover: #ff8533;
+  --accent-brand-active: #e65600;
+
+  /* Apple System Colors */
+  --apple-blue: #2997ff;
+  --apple-green: #30d158;
+  --apple-yellow: #ffd60a;
+  --apple-red: #ff453a;
+  --apple-purple: #bf5af2;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-regular: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --border-glow: rgba(255, 107, 24, 0.4);
+
+  /* Shadows */
+  --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-elevation: 0 12px 36px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 40px rgba(255, 107, 24, 0.2);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Menlo", "Monaco", "Cascadia Code", monospace;
+
+  /* Layout */
+  --max-width: 1200px;
+  --max-width-narrow: 980px;
+  --max-width-wide: 1360px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Header & Navigation */
+  --nav-height: 52px;
+
+  /* Transitions */
+  --transition-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Light Theme Support */
+[data-theme="light"] {
+  --bg-primary: #fbfbfd;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #e8e8ed;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --bg-glass: rgba(255, 255, 255, 0.82);
+  --bg-glass-elevated: rgba(255, 255, 255, 0.95);
+
+  --metal-space-black: #e2e2e7;
+  --metal-highlight: #ffffff;
+  --metal-lip: #d0d0d5;
+  --metal-notch: #1d1d1f;
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #86868b;
+  --text-quaternary: #d2d2d7;
+  --text-inverse: #ffffff;
+
+  --accent-brand: #c65a16;
+  --accent-brand-subtle: rgba(198, 90, 22, 0.08);
+  --accent-brand-border: rgba(198, 90, 22, 0.28);
+  --accent-brand-hover: #db661b;
+  --accent-brand-active: #a84b11;
+
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-regular: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.2);
+  --border-glow: rgba(198, 90, 22, 0.3);
+
+  --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-elevation: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 20px 48px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 35px rgba(198, 90, 22, 0.15);
+}
+
+/* Reset & Global Defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Apple Typography Defaults */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: clamp(2rem, 3.8vw, 3.25rem);
+  letter-spacing: -0.03em;
+}
+
+h3 {
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: var(--text-secondary);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Containers */
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.container-narrow {
+  width: 100%;
+  max-width: var(--max-width-narrow);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.container-wide {
+  width: 100%;
+  max-width: var(--max-width-wide);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* Apple Sticky Navigation Header */
+.apple-nav-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--transition-smooth), border-color var(--transition-smooth);
+}
+
+.apple-nav {
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.apple-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+}
+
+.apple-brand img {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.apple-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  list-style: none;
+}
+
+.apple-nav-links a {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  padding: 6px 0;
+  position: relative;
+}
+
+.apple-nav-links a:hover,
+.apple-nav-links a.active {
+  color: var(--text-primary);
+}
+
+.apple-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Apple Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 11px 22px;
+  border-radius: var(--radius-full);
+  letter-spacing: -0.01em;
+  transition: all var(--transition-fast);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-sm {
+  font-size: 0.8125rem;
+  padding: 7px 14px;
+}
+
+.btn-lg {
+  font-size: 1.0625rem;
+  padding: 14px 28px;
+  font-weight: 600;
+}
+
+/* Primary Apple Button — International Orange / Vibrant Accent */
+.btn-primary {
+  background: linear-gradient(180deg, #ff7b2b 0%, #ff5e0a 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(255, 107, 24, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, #ff8c42 0%, #ff6e1a 100%);
+  box-shadow: 0 4px 18px rgba(255, 107, 24, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  background: #e65600;
+}
+
+/* Secondary Apple Button — Frosted Glass with Hairline Border */
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-regular);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Apple Eyebrow / Badges */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-brand);
+  background: var(--accent-brand-subtle);
+  border: 1px solid var(--accent-brand-border);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: 16px;
+}
+
+.eyebrow .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-brand);
+  box-shadow: 0 0 8px var(--accent-brand);
+}
+
+.eyebrow-blue {
+  color: var(--apple-blue);
+  background: rgba(41, 151, 255, 0.1);
+  border-color: rgba(41, 151, 255, 0.3);
+}
+.eyebrow-blue .dot {
+  background-color: var(--apple-blue);
+  box-shadow: 0 0 8px var(--apple-blue);
+}
+
+/* Apple Keycaps `<kbd>` */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid var(--border-regular);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 3px 8px;
+  min-width: 24px;
+  height: 24px;
+  margin: 0 2px;
+}
+
+/* Apple Cards & Glass Panels */
+.apple-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 36px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.apple-card:hover {
+  border-color: var(--border-regular);
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-card);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border-color: var(--border-subtle);
+}
+
+/* Mobile Nav Toggle */
+.mobile-nav-toggle {
+  display: none;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+}
+
+@media (max-width: 820px) {
+  .apple-nav-links {
+    display: none;
+  }
+  .mobile-nav-toggle {
+    display: flex;
+  }
+  .apple-nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    background: var(--bg-glass-elevated);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    padding: 24px;
+    gap: 18px;
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-elevation);
+  }
+}

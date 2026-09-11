@@ -75,9 +75,11 @@ struct Controls: View {
     private var header: some View {
         HStack(alignment:.top) {
             Image(nsImage:AppBrand.mark).resizable().scaledToFit().frame(width:40,height:40)
+                .clipShape(RoundedRectangle(cornerRadius:9,style:.continuous))
+                .shadow(color:.black.opacity(0.15),radius:2,x:0,y:1)
                 .accessibilityHidden(true)
             VStack(alignment:.leading,spacing:5) {
-                Text("Mac Duo").font(.system(size:27,weight:.semibold,design:.rounded))
+                Text("Mac Fold").font(.system(size:27,weight:.semibold,design:.rounded))
                 Text("Let your desktop follow the fold.").font(.system(size:12)).foregroundStyle(.secondary)
             }
             Spacer()
@@ -108,18 +110,128 @@ struct Controls: View {
     }
 
     private func preview(width: CGFloat) -> some View {
-            VStack(spacing:0) {
-                MetalPreview(model:model)
-                    .frame(width:width-14,height:(width-14)/1.54)
-                    .overlay(alignment:.top) {
-                        UnevenRoundedRectangle(bottomLeadingRadius:5,bottomTrailingRadius:5)
-                            .fill(.black).frame(width:width*0.16,height:9)
+        let screenWidth = width - 16
+        let screenHeight = screenWidth / 1.54
+        let notchWidth = min(screenWidth * 0.18, 92.0)
+        let notchHeight: CGFloat = 11
+
+        return VStack(spacing: 0) {
+            // Display Lid Assembly
+            ZStack(alignment: .top) {
+                // Outer Anodized Aluminum Lid Edge & Bezel
+                UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 3, bottomTrailingRadius: 3, topTrailingRadius: 18)
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color(white: 0.24), location: 0.0),
+                                .init(color: Color(white: 0.13), location: 0.08),
+                                .init(color: Color(white: 0.08), location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .overlay(
+                        UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 3, bottomTrailingRadius: 3, topTrailingRadius: 18)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color(white: 0.40), Color(white: 0.18)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.75
+                            )
+                    )
+
+                // Active Metal Display
+                MetalPreview(model: model)
+                    .frame(width: screenWidth, height: screenHeight)
+                    .overlay(alignment: .top) {
+                        // MacBook Pro Notch with Camera & Sensors
+                        ZStack {
+                            UnevenRoundedRectangle(bottomLeadingRadius: 6, bottomTrailingRadius: 6)
+                                .fill(Color(white: 0.05))
+                                .frame(width: notchWidth, height: notchHeight)
+                                .overlay(
+                                    UnevenRoundedRectangle(bottomLeadingRadius: 6, bottomTrailingRadius: 6)
+                                        .stroke(Color(white: 0.15), lineWidth: 0.5)
+                                )
+
+                            HStack(spacing: 5) {
+                                // Camera Lens with optical flare
+                                Circle()
+                                    .fill(
+                                        RadialGradient(
+                                            colors: [Color(red: 0.12, green: 0.25, blue: 0.42), Color(white: 0.03)],
+                                            center: .center,
+                                            startRadius: 0,
+                                            endRadius: 3
+                                        )
+                                    )
+                                    .frame(width: 5, height: 5)
+
+                                // Green Camera Indicator LED with gentle glow
+                                Circle()
+                                    .fill(Color(red: 0.2, green: 0.9, blue: 0.4))
+                                    .frame(width: 2.2, height: 2.2)
+                                    .shadow(color: Color(red: 0.2, green: 0.9, blue: 0.4).opacity(0.8), radius: 2)
+                            }
+                            .offset(y: 1)
+                        }
                     }
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius:12,bottomLeadingRadius:2,bottomTrailingRadius:2,topTrailingRadius:12))
-                    .padding(7).background(.black,in:UnevenRoundedRectangle(topLeadingRadius:18,topTrailingRadius:18))
-                RoundedRectangle(cornerRadius:3).fill(Color(white:0.34)).frame(height:7).padding(.horizontal,-5)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 2, bottomTrailingRadius: 2, topTrailingRadius: 12))
+                    .padding(8)
             }
-        .frame(width:width)
+            .frame(width: width)
+
+            // Lower Chassis Deck (Unibody Base)
+            ZStack(alignment: .top) {
+                // Bottom aluminum unibody enclosure
+                UnevenRoundedRectangle(topLeadingRadius: 1, bottomLeadingRadius: 5, bottomTrailingRadius: 5, topTrailingRadius: 1)
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color(white: 0.38), location: 0.0),
+                                .init(color: Color(white: 0.26), location: 0.35),
+                                .init(color: Color(white: 0.16), location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: width + 8, height: 8)
+                    .overlay(
+                        // Specular edge highlight along bottom lip
+                        UnevenRoundedRectangle(topLeadingRadius: 1, bottomLeadingRadius: 5, bottomTrailingRadius: 5, topTrailingRadius: 1)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color(white: 0.55), Color(white: 0.20)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.5
+                            )
+                    )
+
+                // Precision CNC Thumb Opening Groove
+                UnevenRoundedRectangle(bottomLeadingRadius: 3, bottomTrailingRadius: 3)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(white: 0.12), Color(white: 0.22)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: width * 0.15, height: 3.5)
+                    .overlay(
+                        UnevenRoundedRectangle(bottomLeadingRadius: 3, bottomTrailingRadius: 3)
+                            .stroke(Color(white: 0.08), lineWidth: 0.5)
+                    )
+            }
+            .padding(.top, 0)
+            .shadow(color: Color.black.opacity(0.35), radius: 6, x: 0, y: 4)
+        }
+        .frame(width: width)
     }
 
     /// Sits in the row the "Controls" heading used to occupy. The reduced stack
@@ -169,7 +281,7 @@ struct Controls: View {
         VStack(alignment:.leading,spacing:8) {
             Divider()
             HStack(spacing:8) {
-                Button(model.checkingPermission ? "Checking…" : (model.enabled ? "Pause Mac Duo" : "Enable Mac Duo")) {
+                Button(model.checkingPermission ? "Checking…" : (model.enabled ? "Pause Mac Fold" : "Enable Mac Fold")) {
                     if model.enabled { model.pause() } else { model.enable() }
                 }.disabled(model.checkingPermission).buttonStyle(.borderedProminent).tint(accent)
                 Button(model.demoRunning ? "Testing…" : "Test desktop · 8 sec") { model.testDesktop() }

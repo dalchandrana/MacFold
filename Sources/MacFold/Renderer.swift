@@ -348,34 +348,284 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
             throw AppError.message("Preview image could not be created.")
         }
         context.scaleBy(x: CGFloat(width)/1440, y: CGFloat(height)/936)
-        let colors = [NSColor(red: 0.07, green: 0.13, blue: 0.18, alpha: 1).cgColor,
-                      NSColor(red: 0.18, green: 0.47, blue: 0.48, alpha: 1).cgColor,
-                      NSColor(red: 0.89, green: 0.68, blue: 0.48, alpha: 1).cgColor] as CFArray
-        let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0,0.6,1])!
-        context.drawLinearGradient(gradient, start: CGPoint(x: 720,y: 936), end: CGPoint(x: 720,y: 0), options: [])
-        for i in 0..<6 {
+
+        // 1. Deep Cosmic Obsidian Base Gradient
+        let bgColors = [
+            NSColor(red: 0.03, green: 0.03, blue: 0.06, alpha: 1.0).cgColor,
+            NSColor(red: 0.07, green: 0.06, blue: 0.12, alpha: 1.0).cgColor,
+            NSColor(red: 0.05, green: 0.04, blue: 0.09, alpha: 1.0).cgColor
+        ] as CFArray
+        let bgGradient = CGGradient(colorsSpace: colorSpace, colors: bgColors, locations: [0.0, 0.55, 1.0])!
+        context.drawLinearGradient(bgGradient, start: CGPoint(x: 720, y: 936), end: CGPoint(x: 720, y: 0), options: [])
+
+        // 2. Ambient Color Glows (Warm Sunset & Cosmic Violet)
+        let glowOrange = CGGradient(colorsSpace: colorSpace, colors: [
+            NSColor(red: 0.98, green: 0.46, blue: 0.14, alpha: 0.28).cgColor,
+            NSColor(red: 0.98, green: 0.46, blue: 0.14, alpha: 0.0).cgColor
+        ] as CFArray, locations: [0.0, 1.0])!
+        context.drawRadialGradient(glowOrange, startCenter: CGPoint(x: 950, y: 480), startRadius: 0,
+                                   endCenter: CGPoint(x: 950, y: 480), endRadius: 520, options: [])
+
+        let glowViolet = CGGradient(colorsSpace: colorSpace, colors: [
+            NSColor(red: 0.58, green: 0.18, blue: 0.88, alpha: 0.25).cgColor,
+            NSColor(red: 0.58, green: 0.18, blue: 0.88, alpha: 0.0).cgColor
+        ] as CFArray, locations: [0.0, 1.0])!
+        context.drawRadialGradient(glowViolet, startCenter: CGPoint(x: 420, y: 520), startRadius: 0,
+                                   endCenter: CGPoint(x: 420, y: 520), endRadius: 560, options: [])
+
+        // 3. Flowing Cosmic Silk Ribbon Waves
+        func drawRibbon(points: [(CGPoint, CGPoint, CGPoint, CGPoint)], colors: [CGColor], alpha: CGFloat = 0.55) {
+            context.saveGState()
+            context.setAlpha(alpha)
             let path = CGMutablePath()
-            let y = Double(i)*60
-            path.move(to: CGPoint(x:0,y:y))
-            path.addCurve(to: CGPoint(x:1440,y:y+190), control1: CGPoint(x:480,y:y+430), control2: CGPoint(x:1000,y:y-180))
-            path.addLine(to: CGPoint(x:1440,y:0));path.addLine(to:.zero);path.closeSubpath()
-            context.setFillColor(NSColor(red:0.06,green:0.19+Double(i)*0.012,blue:0.24+Double(i)*0.012,alpha:0.30).cgColor)
-            context.addPath(path);context.fillPath()
+            path.move(to: points[0].0)
+            for seg in points {
+                path.addCurve(to: seg.3, control1: seg.1, control2: seg.2)
+            }
+            path.addLine(to: CGPoint(x: 1440, y: 0))
+            path.addLine(to: CGPoint(x: 0, y: 0))
+            path.closeSubpath()
+            let grad = CGGradient(colorsSpace: colorSpace, colors: colors as CFArray, locations: [0.0, 1.0])!
+            context.addPath(path)
+            context.clip()
+            context.drawLinearGradient(grad, start: CGPoint(x: 200, y: 900), end: CGPoint(x: 1240, y: 100), options: [])
+            context.restoreGState()
         }
+
+        // Violet Wave
+        drawRibbon(points: [
+            (CGPoint(x: 0, y: 420), CGPoint(x: 380, y: 680), CGPoint(x: 920, y: 220), CGPoint(x: 1440, y: 540))
+        ], colors: [
+            NSColor(red: 0.65, green: 0.15, blue: 0.85, alpha: 0.85).cgColor,
+            NSColor(red: 0.32, green: 0.08, blue: 0.62, alpha: 0.50).cgColor
+        ], alpha: 0.60)
+
+        // Vibrant Amber/Orange Fold Wave
+        drawRibbon(points: [
+            (CGPoint(x: 0, y: 310), CGPoint(x: 420, y: 560), CGPoint(x: 980, y: 140), CGPoint(x: 1440, y: 430))
+        ], colors: [
+            NSColor(red: 1.0, green: 0.62, blue: 0.18, alpha: 0.90).cgColor,
+            NSColor(red: 0.92, green: 0.32, blue: 0.08, alpha: 0.60).cgColor
+        ], alpha: 0.70)
+
+        // Electric Cyber Cyan Ribbon
+        drawRibbon(points: [
+            (CGPoint(x: 0, y: 220), CGPoint(x: 480, y: 440), CGPoint(x: 940, y: 90), CGPoint(x: 1440, y: 320))
+        ], colors: [
+            NSColor(red: 0.12, green: 0.72, blue: 0.95, alpha: 0.80).cgColor,
+            NSColor(red: 0.04, green: 0.35, blue: 0.68, alpha: 0.40).cgColor
+        ], alpha: 0.55)
+
+        // Deep Shadow Wave for Physical Folding Dimension
+        drawRibbon(points: [
+            (CGPoint(x: 0, y: 150), CGPoint(x: 520, y: 320), CGPoint(x: 1000, y: 60), CGPoint(x: 1440, y: 210))
+        ], colors: [
+            NSColor(red: 0.08, green: 0.07, blue: 0.15, alpha: 0.95).cgColor,
+            NSColor(red: 0.03, green: 0.03, blue: 0.08, alpha: 0.95).cgColor
+        ], alpha: 0.80)
+
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        let title: [NSAttributedString.Key:Any] = [.font:NSFont.systemFont(ofSize:116,weight:.light), .foregroundColor:NSColor.white.withAlphaComponent(0.9)]
-        let caption: [NSAttributedString.Key:Any] = [.font:NSFont.systemFont(ofSize:23,weight:.medium), .foregroundColor:NSColor.white.withAlphaComponent(0.8)]
-        let previewTitle = "Mac Duo" as NSString
-        let titleWidth = previewTitle.size(withAttributes:title).width
-        previewTitle.draw(at:CGPoint(x:(1440-titleWidth)/2,y:530),withAttributes:title)
-        ("A little motion. A different feeling." as NSString).draw(at:CGPoint(x:533,y:493),withAttributes:caption)
-        NSColor.white.withAlphaComponent(0.16).setFill()
-        NSBezierPath(roundedRect:NSRect(x:490,y:28,width:460,height:78),xRadius:23,yRadius:23).fill()
-        for i in 0..<7 {
-            NSColor(calibratedHue:CGFloat(i)/9,saturation:0.35,brightness:0.95,alpha:0.9).setFill()
-            NSBezierPath(roundedRect:NSRect(x:511+i*62,y:41,width:49,height:49),xRadius:13,yRadius:13).fill()
+
+        // 4. macOS Top Menu Bar
+        NSColor(white: 0.03, alpha: 0.55).setFill()
+        NSRect(x: 0, y: 904, width: 1440, height: 32).fill()
+        NSColor(white: 1.0, alpha: 0.12).setFill()
+        NSRect(x: 0, y: 904, width: 1440, height: 1).fill()
+
+        // Apple Logo glyph
+        let menuAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .regular),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.85)
+        ]
+        let boldMenuAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .bold),
+            .foregroundColor: NSColor.white
+        ]
+        ("" as NSString).draw(at: CGPoint(x: 24, y: 911), withAttributes: boldMenuAttrs)
+        ("Mac Fold" as NSString).draw(at: CGPoint(x: 48, y: 911), withAttributes: boldMenuAttrs)
+        var menuX: CGFloat = 130
+        for item in ["File", "Edit", "View", "Window", "Help"] {
+            (item as NSString).draw(at: CGPoint(x: menuX, y: 911), withAttributes: menuAttrs)
+            menuX += (item as NSString).size(withAttributes: menuAttrs).width + 18
         }
+        // Right status bar items
+        let statusText = "􀛨   􀙇   􀊫   􀉮   Tue Sep 11  9:41 AM" as NSString
+        let statusSize = statusText.size(withAttributes: menuAttrs)
+        statusText.draw(at: CGPoint(x: 1440 - statusSize.width - 24, y: 911), withAttributes: menuAttrs)
+
+        // 5. Center Glassmorphic Hero Card
+        let cardRect = NSRect(x: 440, y: 350, width: 560, height: 260)
+        let cardPath = NSBezierPath(roundedRect: cardRect, xRadius: 26, yRadius: 26)
+        NSColor(red: 0.08, green: 0.08, blue: 0.14, alpha: 0.65).setFill()
+        cardPath.fill()
+
+        // Card Specular Border
+        context.saveGState()
+        cardPath.lineWidth = 1.5
+        NSColor(white: 1.0, alpha: 0.22).setStroke()
+        cardPath.stroke()
+        context.restoreGState()
+
+        // Card Glow Header & Logo
+        var logoDrawn = false
+        let logoImagePaths = [
+            Bundle.main.url(forResource: "MacFoldMark", withExtension: "png")?.path,
+            "Resources/MacFoldMark.png",
+            "docs/assets/mark.png",
+            "docs/assets/Logo.png"
+        ].compactMap { $0 }
+
+        for path in logoImagePaths {
+            if let image = NSImage(contentsOfFile: path) {
+                let logoRect = NSRect(x: 476, y: 476, width: 68, height: 68)
+                // Soft ambient backing glow
+                NSColor(red: 1.0, green: 0.55, blue: 0.18, alpha: 0.35).setFill()
+                NSBezierPath(ovalIn: logoRect.insetBy(dx: -8, dy: -8)).fill()
+                image.draw(in: logoRect)
+                logoDrawn = true
+                break
+            }
+        }
+        if !logoDrawn {
+            NSColor(red: 1.0, green: 0.55, blue: 0.18, alpha: 0.9).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 476, y: 476, width: 68, height: 68), xRadius: 18, yRadius: 18).fill()
+        }
+
+        // Title & Description
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 42, weight: .bold),
+            .foregroundColor: NSColor.white
+        ]
+        let subAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 16, weight: .medium),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.72)
+        ]
+        ("Mac Fold" as NSString).draw(at: CGPoint(x: 564, y: 494), withAttributes: titleAttrs)
+        ("Physical Lid Motion & Display Engine" as NSString).draw(at: CGPoint(x: 566, y: 468), withAttributes: subAttrs)
+
+        // Feature Pills
+        func drawPill(text: String, dotColor: NSColor, x: CGFloat, y: CGFloat) {
+            let pillAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: NSColor.white.withAlphaComponent(0.92)
+            ]
+            let textSize = (text as NSString).size(withAttributes: pillAttrs)
+            let pillRect = NSRect(x: x, y: y, width: textSize.width + 36, height: 32)
+            NSColor(white: 1.0, alpha: 0.10).setFill()
+            NSBezierPath(roundedRect: pillRect, xRadius: 16, yRadius: 16).fill()
+            NSColor(white: 1.0, alpha: 0.18).setStroke()
+            NSBezierPath(roundedRect: pillRect, xRadius: 16, yRadius: 16).stroke()
+            dotColor.setFill()
+            NSBezierPath(ovalIn: NSRect(x: x + 12, y: y + 11, width: 10, height: 10)).fill()
+            (text as NSString).draw(at: CGPoint(x: x + 28, y: y + 8), withAttributes: pillAttrs)
+        }
+
+        drawPill(text: "120Hz ProMotion Ready", dotColor: NSColor(red: 0.25, green: 0.88, blue: 0.52, alpha: 1.0),
+                 x: 476, y: 395)
+        drawPill(text: "6 Real-Time Metal Shaders", dotColor: NSColor(red: 1.0, green: 0.56, blue: 0.18, alpha: 1.0),
+                 x: 720, y: 395)
+
+        // 6. Realistic macOS Glass Dock
+        let dockWidth: CGFloat = 580
+        let dockHeight: CGFloat = 76
+        let dockRect = NSRect(x: (1440 - dockWidth) / 2, y: 26, width: dockWidth, height: dockHeight)
+        let dockPath = NSBezierPath(roundedRect: dockRect, xRadius: 24, yRadius: 24)
+        NSColor(white: 0.12, alpha: 0.65).setFill()
+        dockPath.fill()
+        NSColor(white: 1.0, alpha: 0.25).setStroke()
+        dockPath.lineWidth = 1.0
+        dockPath.stroke()
+
+        // 7 Detailed App Icons in Dock
+        let iconSize: CGFloat = 52
+        let iconSpacing: CGFloat = 24
+        let totalIconsWidth = 7 * iconSize + 6 * iconSpacing
+        let startIconX = dockRect.minX + (dockWidth - totalIconsWidth) / 2
+        let iconY = dockRect.minY + (dockHeight - iconSize) / 2 + 2
+
+        for i in 0..<7 {
+            let ix = startIconX + CGFloat(i) * (iconSize + iconSpacing)
+            let irect = NSRect(x: ix, y: iconY, width: iconSize, height: iconSize)
+            let ipath = NSBezierPath(roundedRect: irect, xRadius: 13, yRadius: 13)
+
+            switch i {
+            case 0: // Finder
+                let fGrad = CGGradient(colorsSpace: colorSpace, colors: [
+                    NSColor(red: 0.35, green: 0.72, blue: 0.98, alpha: 1.0).cgColor,
+                    NSColor(red: 0.12, green: 0.40, blue: 0.85, alpha: 1.0).cgColor
+                ] as CFArray, locations: [0.0, 1.0])!
+                context.saveGState(); ipath.addClip()
+                context.drawLinearGradient(fGrad, start: CGPoint(x: ix, y: iconY+iconSize), end: CGPoint(x: ix+iconSize, y: iconY), options: [])
+                context.restoreGState()
+                ("🙂" as NSString).draw(at: CGPoint(x: ix + 12, y: iconY + 11),
+                                       withAttributes: [.font: NSFont.systemFont(ofSize: 26)])
+            case 1: // Safari
+                let sGrad = CGGradient(colorsSpace: colorSpace, colors: [
+                    NSColor(red: 0.15, green: 0.55, blue: 0.98, alpha: 1.0).cgColor,
+                    NSColor(red: 0.05, green: 0.28, blue: 0.75, alpha: 1.0).cgColor
+                ] as CFArray, locations: [0.0, 1.0])!
+                context.saveGState(); ipath.addClip()
+                context.drawLinearGradient(sGrad, start: CGPoint(x: ix, y: iconY+iconSize), end: CGPoint(x: ix, y: iconY), options: [])
+                context.restoreGState()
+                ("🧭" as NSString).draw(at: CGPoint(x: ix + 12, y: iconY + 11),
+                                       withAttributes: [.font: NSFont.systemFont(ofSize: 26)])
+            case 2: // Terminal
+                NSColor(white: 0.14, alpha: 1.0).setFill()
+                ipath.fill()
+                NSColor(white: 0.30, alpha: 1.0).setStroke()
+                ipath.stroke()
+                (">_" as NSString).draw(at: CGPoint(x: ix + 10, y: iconY + 15),
+                                        withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 22, weight: .bold),
+                                                         .foregroundColor: NSColor(red: 0.3, green: 0.95, blue: 0.5, alpha: 1.0)])
+            case 3: // Mac Fold (Featured App)
+                NSColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 1.0).setFill()
+                ipath.fill()
+                NSColor(red: 1.0, green: 0.55, blue: 0.18, alpha: 0.9).setStroke()
+                ipath.lineWidth = 1.5
+                ipath.stroke()
+                if let path = logoImagePaths.first, let img = NSImage(contentsOfFile: path) {
+                    img.draw(in: irect.insetBy(dx: 6, dy: 6))
+                } else {
+                    ("∞" as NSString).draw(at: CGPoint(x: ix + 14, y: iconY + 10),
+                                          withAttributes: [.font: NSFont.systemFont(ofSize: 32, weight: .bold),
+                                                           .foregroundColor: NSColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0)])
+                }
+            case 4: // Code / Xcode
+                let xGrad = CGGradient(colorsSpace: colorSpace, colors: [
+                    NSColor(red: 0.12, green: 0.45, blue: 0.92, alpha: 1.0).cgColor,
+                    NSColor(red: 0.05, green: 0.22, blue: 0.65, alpha: 1.0).cgColor
+                ] as CFArray, locations: [0.0, 1.0])!
+                context.saveGState(); ipath.addClip()
+                context.drawLinearGradient(xGrad, start: CGPoint(x: ix, y: iconY+iconSize), end: CGPoint(x: ix, y: iconY), options: [])
+                context.restoreGState()
+                ("🛠️" as NSString).draw(at: CGPoint(x: ix + 12, y: iconY + 11),
+                                        withAttributes: [.font: NSFont.systemFont(ofSize: 25)])
+            case 5: // Photos
+                NSColor.white.setFill()
+                ipath.fill()
+                ("🌸" as NSString).draw(at: CGPoint(x: ix + 11, y: iconY + 11),
+                                       withAttributes: [.font: NSFont.systemFont(ofSize: 27)])
+            case 6: // Settings
+                let gGrad = CGGradient(colorsSpace: colorSpace, colors: [
+                    NSColor(white: 0.65, alpha: 1.0).cgColor,
+                    NSColor(white: 0.42, alpha: 1.0).cgColor
+                ] as CFArray, locations: [0.0, 1.0])!
+                context.saveGState(); ipath.addClip()
+                context.drawLinearGradient(gGrad, start: CGPoint(x: ix, y: iconY+iconSize), end: CGPoint(x: ix, y: iconY), options: [])
+                context.restoreGState()
+                ("⚙️" as NSString).draw(at: CGPoint(x: ix + 12, y: iconY + 11),
+                                        withAttributes: [.font: NSFont.systemFont(ofSize: 26)])
+            default: break
+            }
+
+            // Running indicator dot under active apps
+            if [0, 2, 3].contains(i) {
+                NSColor.white.withAlphaComponent(0.85).setFill()
+                NSBezierPath(ovalIn: NSRect(x: ix + iconSize / 2 - 2, y: dockRect.minY + 4, width: 4, height: 4)).fill()
+            }
+        }
+
         NSGraphicsContext.restoreGraphicsState()
         guard let image = context.makeImage() else { throw AppError.message("Preview image is unavailable.") }
         return try MTKTextureLoader(device:device).newTexture(cgImage:image,options:[.SRGB:false,.origin:MTKTextureLoader.Origin.topLeft])

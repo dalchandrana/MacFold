@@ -1,0 +1,13 @@
+{
+  "name": "macfold-website",
+  "version": "0.1.12",
+  "description": "Mac Fold Apple-inspired landing page and documentation hub",
+  "scripts": {
+    "dev": "npx serve . -l 3000",
+    "start": "npx serve . -l 3000",
+    "serve": "npx serve . -l 3000"
+  },
+  "keywords": ["macfold", "macos", "apple", "swift", "metal"],
+  "author": "Dalchand Rana",
+  "license": "MIT"
+}

@@ -1,21 +1,411 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="description" content="Mac Duo is an open-source Mac app that makes your desktop follow the physical movement of your MacBook lid."><link rel="canonical" href="https://macduo.dhananjaytech.app/"><meta property="og:url" content="https://macduo.dhananjaytech.app/"><meta property="og:image" content="https://macduo.dhananjaytech.app/assets/social.jpg"><title>Mac Duo — Your desktop follows your lid</title><link rel="icon" href="assets/mark.png" type="image/png"><link rel="stylesheet" href="style.css"></head>
-<body><a class="skip" href="#main">Skip to content</a><header class="nav wrap"><a class="brand" href="./" aria-label="Mac Duo home"><img src="assets/mark.png" alt="" width="28" height="28">Mac Duo</a><nav aria-label="Main"><a href="#install">Install</a><a href="https://github.com/DhananjayBhosale/MacDuo">GitHub <span aria-hidden="true">↗</span></a></nav></header>
-<main id="main"><section class="hero wrap"><p class="eyebrow"><span class="dot"></span> OPEN SOURCE · MADE FOR macOS</p><h1>Your desktop.<br><span>A little more physical.</span></h1><p class="intro">Close the lid. Watch your desktop bend, soften, and disappear.<br class="wide"> Open it again, and everything comes back into focus.</p><div class="actions"><a class="button primary" href="https://github.com/DhananjayBhosale/MacDuo/releases/latest/download/Mac-Duo.dmg">Download for Mac <span aria-hidden="true">↓</span></a><a class="button secondary" href="#install">How to install</a></div><p class="fine">Apple silicon · macOS 13+ · Compatible MacBook lid sensor required</p>
-<aside class="compatibility" aria-labelledby="compatibility-title"><h2 id="compatibility-title">MacBook compatibility · macOS 13+</h2><p><strong>Expected to work:</strong> MacBook Air with M2 or newer, and 14-/16-inch MacBook Pro with M1 Pro/Max or newer.</p><p><strong>Unsupported:</strong> M1 MacBook Air and 13-inch MacBook Pro with M1 or M2.</p><p class="compatibility-note">Built for macOS 13; tested on an M4 MacBook Pro running a newer macOS. Physical Ventura testing is pending. Mac Duo checks for a compatible lid sensor; external displays are not animated.</p></aside>
-<div class="demo"><div class="demo-bar"><span><i></i><i></i><i></i></span><span>DUO / THE ORIGINAL EFFECT</span><span>PREVIEW</span></div><video id="demo-video" poster="assets/duo.jpg" src="assets/duo.mp4" loop muted playsinline controls preload="metadata" aria-label="Generated demonstration of the Duo effect closing and reopening"></video></div><p class="caption">Generated artwork demonstrating Duo. Your actual desktop is animated locally on your Mac.</p></section>
-<section class="features wrap" id="how"><div class="section-heading"><p class="eyebrow">SMALL APP. TANGIBLE MOVEMENT.</p><h2>Move the lid.<br>Feel the difference.</h2></div><div class="feature-grid"><article><span class="number">01</span><h3>It follows your hand.</h3><p>The effect responds to the MacBook’s lid angle. Reverse direction and the display follows you back.</p></article><article><span class="number">02</span><h3>Hold still. See clearly.</h3><p>Pause at any comfortable angle. After your chosen 1–5 seconds, the desktop and live preview return to normal.</p></article><article><span class="number">03</span><h3>Quiet when you are.</h3><p>Settled previews stop rendering. Blur work is reused, with refresh limits that respond to power and temperature.</p></article><article><span class="number">04</span><h3>Your screen stays yours.</h3><p>Desktop frames stay in memory on your Mac. No uploads, recordings, accounts, or analytics.</p></article></div></section>
-<section class="effects wrap" id="effects"><div class="section-heading"><p class="eyebrow">SIX WAYS TO MOVE</p><h2>More ways to move.</h2><p class="section-copy">Duo is the default. Choose Ghost, Roll, Shutter, Flex or Iris for a different physical feel.</p></div><div class="effect-grid"><article><span class="effect-index">01 / DUO · DEFAULT</span><video src="assets/duo.mp4" poster="assets/duo.jpg" loop muted playsinline controls preload="none" aria-label="Generated Duo effect closing and reopening"></video><h3>Your desktop.<br>Following the fold.</h3><p>The original effect expands, softens and disappears around the hinge.</p></article><article><span class="effect-index">02 / GHOST · NEW</span><video src="assets/ghost.mp4" poster="assets/ghost.jpg" loop muted playsinline controls preload="none" aria-label="Generated Ghost perspective compensation and gradual blur"></video><h3>The lid moves.<br>The desktop stays behind.</h3><p>A resting desktop plane behind the tilting display, with gentle blur that grows as you close the lid.</p></article><article><span class="effect-index">03 / ROLL</span><video src="assets/roll.mp4" poster="assets/roll.jpg" loop muted playsinline controls preload="none" aria-label="Generated Roll effect closing and reopening"></video><h3>A flexible sheet.<br>A rolling hinge.</h3><p>The desktop curls down toward the hinge, with wrapped pixels and a moving highlight.</p></article><article><span class="effect-index">04 / SHUTTER</span><video src="assets/shutter.mp4" poster="assets/shutter.jpg" loop muted playsinline controls preload="none" aria-label="Generated Shutter effect closing and reopening"></video><h3>Four panels.<br>One smooth close.</h3><p>Rigid panels slide behind one another, with overlapping edges and contact shadows.</p></article><article><span class="effect-index">05 / FLEX</span><video src="assets/flex.mp4" poster="assets/flex.jpg" loop muted playsinline controls preload="none" aria-label="Generated Flex effect closing and reopening"></video><h3>A little tension.<br>A gentle bend.</h3><p>A continuous display bows inward before settling back into a perfectly flat surface.</p></article><article><span class="effect-index">06 / IRIS</span><video src="assets/iris.mp4" poster="assets/iris.jpg" loop muted playsinline controls preload="none" aria-label="Generated Iris effect closing and reopening"></video><h3>Precision blades.<br>A closing aperture.</h3><p>Dark blades overlap around the desktop in a restrained mechanical twist.</p></article></div></section>
-<section class="install wrap" id="install"><div class="section-heading"><p class="eyebrow">A MINUTE TO GET STARTED</p><h2>Download. Drag. Open.</h2></div><ol class="install-steps"><li><strong>Download and move.</strong><p>Open <a href="https://github.com/DhananjayBhosale/MacDuo/releases/latest/download/Mac-Duo.dmg">Mac-Duo.dmg</a> and drag Mac Duo into Applications.</p></li><li><strong>Allow the first launch.</strong><p>Try opening Mac Duo. This release is not notarized, so macOS may show “cannot be opened” or “Apple could not verify.” Go to <strong>System Settings → Privacy &amp; Security → Security → Open Anyway</strong> for Mac Duo, then confirm Open. <a href="https://support.apple.com/102445">Apple’s guide ↗</a></p></li><li><strong>Let it follow your lid.</strong><p>Click Enable Mac Duo and allow Screen Recording when prompted. Reopen if macOS asks. Frames stay in memory on your Mac. Try Replay without permission first.</p></li></ol><p class="install-note">Use <strong>Check for Updates… → Install &amp; Relaunch</strong> in Mac Duo for future updates. If macOS blocks an update, use <strong>Privacy &amp; Security → Open Anyway</strong>, then retry in the recovery dialog or restore the previous app. Checks contact GitHub only when you ask; no desktop frames leave your Mac. For a manual update, quit the app before replacing it. Prefer a ZIP? <a href="https://github.com/DhananjayBhosale/MacDuo/releases/latest">All downloads and checksums ↗</a></p></section><section class="contribute wrap"><p class="eyebrow">BUILT IN THE OPEN</p><h2>Make it your own.</h2><p>Swift. Metal. No third-party runtime dependencies.<br>Read the source, build the app, or help shape its next movement.</p><a class="button primary" href="https://github.com/DhananjayBhosale/MacDuo">View the source <span aria-hidden="true">↗</span></a></section></main>
-<footer class="wrap"><span>Mac Duo <span class="muted">/ 0.1.12</span></span><span>Independent software. Not affiliated with Apple.</span><a href="https://github.com/DhananjayBhosale/MacDuo/blob/main/CHANGELOG.md">What’s new ↗</a></footer>
-<script>
-const videos=[...document.querySelectorAll('video')];
-const hero=document.querySelector('#demo-video');
-const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
-if(!reducedMotion.matches)hero.play().catch(()=>{});
-for(const video of videos)video.addEventListener('play',()=>{for(const other of videos)if(other!==video)other.pause();});
-const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(!entry.isIntersecting)entry.target.pause();},{threshold:0});
-for(const video of videos)observer.observe(video);
-reducedMotion.addEventListener('change',event=>{if(event.matches)for(const video of videos)video.pause();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const video of videos)video.pause();});
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — Mac Fold</title>
+  <meta name="description" content="Technical documentation, architecture, sensor integration, and developer guides for Mac Fold.">
+  <link rel="icon" href="../assets/mark.png" type="image/png">
+  <link rel="stylesheet" href="../css/apple-base.css">
+  <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body>
+
+  <!-- Sticky Header -->
+  <header class="apple-nav-wrapper">
+    <div class="container apple-nav">
+      <a href="../index.html" class="apple-brand">
+        <img src="../assets/mark.png" alt="Mac Fold Logo" width="26" height="26">
+        <span>Mac Fold</span>
+        <span style="font-size: 0.75rem; color: var(--text-tertiary); font-family: var(--font-mono); font-weight: normal; margin-left: 6px;">Docs</span>
+      </a>
+
+      <nav aria-label="Main Navigation">
+        <ul class="apple-nav-links">
+          <li><a href="../index.html">Landing Page</a></li>
+          <li><a href="../index.html#simulator">Simulator</a></li>
+          <li><a href="../index.html#effects">Effects</a></li>
+          <li><a href="../index.html#compatibility">Compatibility</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+        </ul>
+      </nav>
+
+      <div class="apple-nav-actions">
+        <a href="https://github.com/dalchandrana/MacFold" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">
+          <span>GitHub</span>
+        </a>
+        <a href="https://github.com/dalchandrana/MacFold/releases/latest/download/Mac-Fold.dmg" class="btn btn-sm btn-primary">
+          <span>Download DMG</span>
+        </a>
+        <button type="button" class="theme-toggle" id="theme-btn" aria-label="Toggle Theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Two-Column Documentation Layout -->
+  <div class="container-wide docs-layout">
+    <!-- Left Sticky Sidebar -->
+    <aside class="docs-sidebar">
+      <div class="docs-search-box">
+        <svg class="docs-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="docs-search" class="docs-search-input" placeholder="Search documentation...">
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Getting Started</div>
+        <ul class="docs-nav-list">
+          <li><a href="#overview" class="docs-nav-link active">Overview &amp; Requirements</a></li>
+          <li><a href="#installation" class="docs-nav-link">Installation &amp; Gatekeeper</a></li>
+          <li><a href="#permissions" class="docs-nav-link">Screen Recording Permission</a></li>
+          <li><a href="#shortcuts" class="docs-nav-link">Hotkeys &amp; Controls</a></li>
+        </ul>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Architecture</div>
+        <ul class="docs-nav-list">
+          <li><a href="#sensor" class="docs-nav-link">Lid Sensor (IOKit HID)</a></li>
+          <li><a href="#metal" class="docs-nav-link">Metal 3.0 Rendering</a></li>
+          <li><a href="#privacy" class="docs-nav-link">Privacy &amp; Memory Safety</a></li>
+          <li><a href="#stillness" class="docs-nav-link">Stillness Intelligence</a></li>
+        </ul>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">The Six Effects</div>
+        <ul class="docs-nav-list">
+          <li><a href="#effects-guide" class="docs-nav-link">Effect Catalog &amp; Physics</a></li>
+          <li><a href="#ghost-perspective" class="docs-nav-link">Ghost Perspective Math</a></li>
+        </ul>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Developer &amp; Build</div>
+        <ul class="docs-nav-list">
+          <li><a href="#building" class="docs-nav-link">Building from Source</a></li>
+          <li><a href="#signing" class="docs-nav-link">Code Signing &amp; Identity</a></li>
+          <li><a href="#verification" class="docs-nav-link">Render Checks &amp; Testing</a></li>
+          <li><a href="#updater" class="docs-nav-link">In-App Auto Updater</a></li>
+          <li><a href="#faq" class="docs-nav-link">FAQ &amp; Troubleshooting</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content Article -->
+    <main class="docs-content">
+      <nav class="docs-breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Mac Fold</a>
+        <span>&rsaquo;</span>
+        <a href="index.html">Documentation</a>
+        <span>&rsaquo;</span>
+        <span style="color: var(--text-primary);">Developer Guide</span>
+      </nav>
+
+      <article class="docs-article">
+        <h1>Mac Fold Documentation</h1>
+        <p class="docs-lead">
+          Everything you need to understand, install, build, and configure <strong>Mac Fold</strong>. Conceived, engineered, and maintained solely by <a href="https://github.com/dalchandrana" target="_blank" rel="noopener noreferrer" style="color: var(--accent-brand);">Dalchand Rana</a>.
+        </p>
+
+        <!-- Section: Overview -->
+        <section id="overview">
+          <h2>Overview &amp; Requirements</h2>
+          <p>
+            <strong>Mac Fold</strong> bridges physical MacBook hardware kinematics with native macOS graphics pipelines. When you tilt or close your MacBook display lid, the desktop visually folds, curls, defocuses, or shutters in exact synchrony with the physical hinge angle.
+          </p>
+
+          <table class="docs-table">
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Requirement</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Operating System</strong></td>
+                <td>macOS 13.0 Ventura or newer</td>
+                <td>Native Swift 6 &amp; Metal 3.0 baseline</td>
+              </tr>
+              <tr>
+                <td><strong>Processor</strong></td>
+                <td>Apple Silicon (ARM64)</td>
+                <td>M1 Pro/Max, M2, M3, M4 architectures</td>
+              </tr>
+              <tr>
+                <td><strong>Hardware Sensor</strong></td>
+                <td>Lid Angle Sensor</td>
+                <td>HID Sensor Page <code>0x20</code>, Usage <code>0x8A</code></td>
+              </tr>
+              <tr>
+                <td><strong>Display</strong></td>
+                <td>Built-in Liquid Retina / XDR</td>
+                <td>Supports ProMotion up to 120Hz; external monitors are bypassed</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout callout-note">
+            <div class="callout-icon">&#9432;</div>
+            <div class="callout-body">
+              <strong>Supported MacBooks</strong>
+              Expected to work out-of-the-box on <strong>MacBook Air with M2 or newer</strong> and <strong>14-inch &amp; 16-inch MacBook Pro with M1 Pro/Max or newer</strong>. The original M1 MacBook Air (2020) and 13-inch MacBook Pro (Touch Bar) lack this hardware sensor and run in manual preview/replay mode.
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Installation -->
+        <section id="installation">
+          <h2>Installation &amp; Gatekeeper</h2>
+          <p>
+            Because Mac Fold is an independent open-source project without a paid commercial enterprise signing subscription, distributed DMG builds are ad-hoc signed and not notarized by Apple. Follow this simple one-time onboarding procedure:
+          </p>
+
+          <ol>
+            <li>Download <a href="https://github.com/dalchandrana/MacFold/releases/latest/download/Mac-Fold.dmg" style="color: var(--accent-brand);">Mac-Fold.dmg</a> from the official repository.</li>
+            <li>Double-click the DMG and drag <strong>Mac Fold.app</strong> into your <strong>/Applications</strong> folder.</li>
+            <li>Launch <strong>Mac Fold</strong> from Applications. macOS will display an alert stating: <em>"Mac Fold cannot be opened because Apple cannot check it for malicious software"</em>. Click <strong>OK</strong> or <strong>Cancel</strong>.</li>
+            <li>Open macOS <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down to the <strong>Security</strong> section, and click <strong>Open Anyway</strong> next to Mac Fold.</li>
+            <li>Confirm by clicking <strong>Open</strong> in the system confirmation prompt.</li>
+          </ol>
+
+          <div class="callout callout-important">
+            <div class="callout-icon">&#9888;</div>
+            <div class="callout-body">
+              <strong>Official Apple Documentation</strong>
+              Refer to <a href="https://support.apple.com/102445" target="_blank" rel="noopener noreferrer" style="color: var(--apple-blue); text-decoration: underline;">Safely open apps on your Mac (Apple Support)</a> for Apple's official guide on approving independent open-source developer applications.
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Permissions -->
+        <section id="permissions">
+          <h2>Screen Recording Permission</h2>
+          <p>
+            Mac Fold uses Apple's native <code>ScreenCaptureKit</code> framework to capture current desktop frames and pass them to Metal fragment shaders.
+          </p>
+          <p>
+            When you click <strong>Enable Mac Fold</strong> for the first time, macOS will ask you to allow Screen Recording in <strong>System Settings &rarr; Privacy &amp; Security &rarr; Screen Recording</strong>.
+          </p>
+
+          <div class="callout callout-security">
+            <div class="callout-icon">&#128274;</div>
+            <div class="callout-body">
+              <strong>Privacy Assurance</strong>
+              Desktop frames remain strictly in bounded local GPU memory on your Mac. They are never saved to disk, never analyzed, and never sent across the network. Mac Fold contains zero telemetry, zero background reporting, and audio capture is completely disabled.
+            </div>
+          </div>
+
+          <p>
+            If permission appears enabled after a rebuild or update but capture does not start, reset the system registration with Terminal:
+          </p>
+
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>Terminal &mdash; Reset Screen Recording Cache</span>
+              <button type="button" class="code-copy-btn">Copy</button>
+            </div>
+            <pre><code>tccutil reset ScreenCapture local.lidflow.MacFold</code></pre>
+          </div>
+        </section>
+
+        <!-- Section: Shortcuts -->
+        <section id="shortcuts">
+          <h2>Hotkeys &amp; Controls</h2>
+          <p>Mac Fold is designed to stay unobtrusive in your menu bar while providing rapid hotkey access:</p>
+          <ul>
+            <li><kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> &mdash; Toggle or pause Mac Fold anywhere system-wide.</li>
+            <li><kbd>Esc</kbd> &mdash; Instant escape pause when an effect is active.</li>
+            <li><strong>Replay Button</strong> &mdash; Test and preview effects immediately, even without granting Screen Recording permission!</li>
+          </ul>
+        </section>
+
+        <!-- Section: Sensor -->
+        <section id="sensor">
+          <h2>Lid Sensor Architecture (IOKit HID)</h2>
+          <p>
+            Mac Fold discovers and reads Apple's integrated hinge sensor through the low-level <code>IOKit.hid</code> subsystem:
+          </p>
+
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>Swift &mdash; Sources/MacFold/LidSensor.swift</span>
+              <button type="button" class="code-copy-btn">Copy</button>
+            </div>
+            <pre><code>let manager = IOHIDManagerCreate(kCFAllocatorDefault, 0)
+IOHIDManagerSetDeviceMatching(manager, [
+    kIOHIDDeviceUsagePageKey: 0x20, // Sensor Page
+    kIOHIDDeviceUsageKey: 0x8A      // Angle Sensor Usage
+] as CFDictionary)</code></pre>
+          </div>
+
+          <p>
+            The reader runs on a dedicated background dispatch queue (<code>local.lidflow.sensor</code>, QoS: <code>userInteractive</code>) scheduled with a 30Hz timer (every 33.3ms with 2ms leeway). This guarantees that lid reading never induces frame drops or hitches on the main user interface thread.
+          </p>
+        </section>
+
+        <!-- Section: Metal Rendering -->
+        <section id="metal">
+          <h2>Metal 3.0 Rendering &amp; Shaders</h2>
+          <p>
+            Effects are processed through compiled Metal 3.0 fragment shaders. Performance measurements on Apple Silicon (M4 MacBook Pro) confirm shader times at the 95th percentile between <strong>1.94 ms and 2.30 ms</strong> for full Retina resolutions (up to 3024 &times; 1964).
+          </p>
+          <ul>
+            <li><strong>ProMotion 120Hz:</strong> Displays render up to 120 FPS when plugged into power.</li>
+            <li><strong>Power-Aware Throttling:</strong> Refresh rates scale down gracefully on battery or under thermal constraints.</li>
+            <li><strong>Settled Previews Pause:</strong> When the lid is stationary, Metal rendering completely halts (0% GPU utilization).</li>
+            <li><strong>Reusable Blur Pyramid:</strong> Mip-mapped Gaussian blur passes are cached and reused across frames, preventing redundant texture allocations.</li>
+          </ul>
+        </section>
+
+        <!-- Section: Stillness -->
+        <section id="stillness">
+          <h2>Stillness Intelligence</h2>
+          <p>
+            A common challenge with lid-based effects is wanting to pause lid movement to type or read comfortably at a non-standard angle.
+          </p>
+          <p>
+            Mac Fold solves this via <code>LidStillness.swift</code>: if the lid angle remains stationary within a 0.5&deg; tolerance for your selected duration (1 to 5 seconds, default <strong>2 seconds</strong>), the active effect fades out and returns full desktop clarity. As soon as you move the lid again, Mac Fold resumes following.
+          </p>
+        </section>
+
+        <!-- Section: Ghost Perspective -->
+        <section id="ghost-perspective">
+          <h2>Ghost Perspective Compensation</h2>
+          <p>
+            Introduced in version 0.1.12, the <strong>Ghost</strong> effect creates the optical illusion that the desktop is a physical painting anchored to a stationary resting plane in space behind the tilting laptop lid.
+          </p>
+          <p>
+            The shader intersects a stationary viewer's visual ray through the tilted panel with the resting plane. The <em>Perspective</em> slider controls viewing distance between <strong>1.6&times; and 2.6&times;</strong> screen heights. Counter-rotation tracks faster than optical softening to maintain an authentic physical illusion.
+          </p>
+        </section>
+
+        <!-- Section: Building -->
+        <section id="building">
+          <h2>Building from Source</h2>
+          <p>
+            To compile Mac Fold yourself, use <strong>Xcode 16 or newer with Swift 6</strong> on macOS 13+:
+          </p>
+
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>Terminal &mdash; Build Commands</span>
+              <button type="button" class="code-copy-btn">Copy</button>
+            </div>
+            <pre><code># Clone repository
+git clone https://github.com/dalchandrana/MacFold.git
+cd MacFold
+
+# Build release bundle
+./build.sh
+
+# Launch compiled application
+open "build/Mac Fold.app"</code></pre>
+          </div>
+        </section>
+
+        <!-- Section: Verification -->
+        <section id="verification">
+          <h2>Render Checks &amp; Verification</h2>
+          <p>
+            Mac Fold includes an offline GPU render verification suite that checks pixel identity, opacity, blur pyramids, and timing without needing a physical lid:
+          </p>
+
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>Terminal &mdash; Automated Render Checks</span>
+              <button type="button" class="code-copy-btn">Copy</button>
+            </div>
+            <pre><code>swift test
+swift build
+.build/debug/MacFold --render-check validation</code></pre>
+          </div>
+
+          <p>
+            Add the <code>--animation</code> flag to export generated frame sequences for all six closing and reopening effects.
+          </p>
+        </section>
+
+        <!-- Section: Updater -->
+        <section id="updater">
+          <h2>In-App Auto Updater</h2>
+          <p>
+            Mac Fold includes a transparent, user-initiated auto-updater (<code>AppUpdater.swift</code>):
+          </p>
+          <ul>
+            <li>Contacts GitHub Releases over secure HTTPS only when you click <strong>Check for Updates...</strong></li>
+            <li>Validates downloads against official <code>Mac-Fold-SHA256SUMS.txt</code> hashes before unpacking.</li>
+            <li>Executes an atomic replacement into <code>/Applications</code> without requiring administrator privileges or compromising Gatekeeper.</li>
+            <li>Preserves user preferences and provides an immediate recovery dialog to restore previous releases if needed.</li>
+          </ul>
+        </section>
+
+        <!-- Section: FAQ -->
+        <section id="faq">
+          <h2>Frequently Asked Questions</h2>
+          
+          <h3>Does Mac Fold animate external monitors?</h3>
+          <p>
+            No. External displays remain unaffected. Mac Fold detects and animates only the primary built-in Liquid Retina display that corresponds to the physical lid sensor.
+          </p>
+
+          <h3>Why does Mac Fold need Screen Recording permissions?</h3>
+          <p>
+            macOS requires Screen Recording permissions for any application that reads the desktop surface via <code>ScreenCaptureKit</code>. Mac Fold passes these pixels exclusively to your local GPU Metal shaders and discards them immediately.
+          </p>
+
+          <h3>Who created Mac Fold?</h3>
+          <p>
+            Mac Fold was conceived, designed, engineered, and authored solely by <strong>Dalchand Rana</strong> (<a href="https://github.com/dalchandrana" target="_blank" rel="noopener noreferrer" style="color: var(--accent-brand);">@dalchandrana</a>).
+          </p>
+        </section>
+      </article>
+    </main>
+  </div>
+
+  <!-- Global Footer -->
+  <footer class="apple-footer">
+    <div class="container" style="text-align: center;">
+      <p style="margin-bottom: 12px;">
+        Mac Fold &mdash; Conceived, engineered, and maintained solely by <a href="https://github.com/dalchandrana" style="color: var(--accent-brand);">Dalchand Rana</a>.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 20px;">
+        <a href="../index.html">Landing Page</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="https://github.com/dalchandrana/MacFold">GitHub Repository</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/docs.js"></script>
+  <script>
+    // Theme Switcher Logic for Docs
+    const themeBtn = document.getElementById('theme-btn');
+    const htmlEl = document.documentElement;
+
+    function applyTheme(theme) {
+      htmlEl.setAttribute('data-theme', theme);
+      localStorage.setItem('macfold-theme', theme);
+    }
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const current = htmlEl.getAttribute('data-theme') || 'dark';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+      });
+    }
+
+    const savedTheme = localStorage.getItem('macfold-theme');
+    if (savedTheme) {
+      applyTheme(savedTheme);
+    }
+  </script>
+</body>
+</html>

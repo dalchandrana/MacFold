@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog & Releases — Mac Fold</title>
+  <meta name="description" content="Release history and detailed changelog for Mac Fold updates.">
+  <link rel="icon" href="../assets/mark.png" type="image/png">
+  <link rel="stylesheet" href="../css/apple-base.css">
+  <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body>
+
+  <!-- Sticky Header -->
+  <header class="apple-nav-wrapper">
+    <div class="container apple-nav">
+      <a href="../index.html" class="apple-brand">
+        <img src="../assets/mark.png" alt="Mac Fold Logo" width="26" height="26">
+        <span>Mac Fold</span>
+        <span style="font-size: 0.75rem; color: var(--text-tertiary); font-family: var(--font-mono); font-weight: normal; margin-left: 6px;">Changelog</span>
+      </a>
+
+      <nav aria-label="Main Navigation">
+        <ul class="apple-nav-links">
+          <li><a href="../index.html">Landing Page</a></li>
+          <li><a href="../index.html#simulator">Simulator</a></li>
+          <li><a href="../index.html#effects">Effects</a></li>
+          <li><a href="index.html">Documentation</a></li>
+        </ul>
+      </nav>
+
+      <div class="apple-nav-actions">
+        <a href="https://github.com/dalchandrana/MacFold" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">
+          <span>GitHub</span>
+        </a>
+        <a href="https://github.com/dalchandrana/MacFold/releases/latest/download/Mac-Fold.dmg" class="btn btn-sm btn-primary">
+          <span>Download DMG</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="container-narrow" style="padding: 60px 24px 100px 24px;">
+    <div class="docs-breadcrumbs" style="margin-bottom: 24px;">
+      <a href="../index.html">Mac Fold</a>
+      <span>&rsaquo;</span>
+      <span style="color: var(--text-primary);">Release History</span>
+    </div>
+
+    <h1 style="margin-bottom: 12px;">Release History</h1>
+    <p class="docs-lead">
+      Track all new effects, renderer optimizations, and stability releases for Mac Fold.
+    </p>
+
+    <!-- Release 0.1.12 -->
+    <article class="apple-card" style="margin-bottom: 32px; padding: 36px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <span class="version-pill">v0.1.12</span>
+          <span style="font-size: 0.875rem; color: var(--text-tertiary); margin-left: 12px;">Latest Release</span>
+        </div>
+        <a href="https://github.com/dalchandrana/MacFold/releases/tag/v0.1.12" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">
+          Release on GitHub &rarr;
+        </a>
+      </div>
+
+      <h3 style="font-size: 1.5rem; margin-bottom: 12px;">Ghost Perspective Compensation &amp; In-App Updater</h3>
+      <p style="margin-bottom: 16px;">
+        Introduces the new <strong>Ghost</strong> effect with resting-plane perspective ray compensation, an automatic in-app updater with SHA-256 validation, and bounded texture memory reclamation.
+      </p>
+
+      <ul style="padding-left: 20px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px;">
+        <li><strong>Ghost Effect:</strong> Intersects a stationary viewer's ray through the tilted panel with the last resting desktop plane. Tracks counter-rotation faster than optical softening.</li>
+        <li><strong>In-App Updater:</strong> User-initiated GitHub release checks via HTTPS with SHA-256 verification and atomic binary swap into Applications.</li>
+        <li><strong>Memory Safety:</strong> Stopped effects immediately release their blur pyramid, imported capture textures, and drawables back to the OS.</li>
+        <li><strong>Late-Blur Spans:</strong> Small lid movements stay gentle even at low angles with a minimum 20&deg; geometry span.</li>
+      </ul>
+
+      <div style="display: flex; gap: 12px;">
+        <a href="https://github.com/dalchandrana/MacFold/releases/latest/download/Mac-Fold.dmg" class="btn btn-sm btn-primary">Download Mac-Fold.dmg</a>
+        <a href="https://github.com/dalchandrana/MacFold/releases/latest/download/Mac-Fold-mac.zip" class="btn btn-sm btn-secondary">Download ZIP</a>
+      </div>
+    </article>
+
+    <!-- Release 0.1.6 -->
+    <article class="apple-card" style="margin-bottom: 32px; padding: 36px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <span class="version-pill">v0.1.6</span>
+        <span style="font-size: 0.875rem; color: var(--text-tertiary);">Maintenance</span>
+      </div>
+
+      <h3 style="font-size: 1.5rem; margin-bottom: 12px;">Background Capture Continuity</h3>
+      <p style="margin-bottom: 16px;">
+        Preserves active lid following across macOS Spaces and virtual desktops without raising settings windows.
+      </p>
+
+      <ul style="padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
+        <li>Desktop switching retains process identity and smoothly resumes ScreenCaptureKit stream without altering enabled state.</li>
+        <li>Removed legacy 45-second auto-pause timeout; stillness timer and keyboard shortcuts remain active.</li>
+      </ul>
+    </article>
+
+    <!-- Release 0.1.5 -->
+    <article class="apple-card" style="padding: 36px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <span class="version-pill">v0.1.5</span>
+        <span style="font-size: 0.875rem; color: var(--text-tertiary);">Performance</span>
+      </div>
+
+      <h3 style="font-size: 1.5rem; margin-bottom: 12px;">Metal 3.0 Apple Silicon Validation</h3>
+      <p style="margin-bottom: 16px;">
+        Validated on Apple M4 MacBook Pro with offscreen 3024 &times; 1964 render verification. 95th percentile GPU time clocked under 2.30ms across all effects.
+      </p>
+    </article>
+  </div>
+
+  <!-- Global Footer -->
+  <footer class="apple-footer">
+    <div class="container" style="text-align: center;">
+      <p style="margin-bottom: 12px;">
+        Mac Fold &mdash; Conceived, engineered, and maintained solely by <a href="https://github.com/dalchandrana" style="color: var(--accent-brand);">Dalchand Rana</a>.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 20px;">
+        <a href="../index.html">Landing Page</a>
+        <a href="index.html">Documentation</a>
+        <a href="https://github.com/dalchandrana/MacFold">GitHub Repository</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,20 +1,20 @@
-# Build and verify Mac Duo
+# Build and verify Mac Fold
 
 ## Build
 
 Use **Xcode 16 or newer / Swift 6** on a supported build host. The app itself targets **macOS 13 Ventura or newer** on Apple silicon; a compatible MacBook lid sensor is required for automatic following. A newer build SDK does not raise the app's deployment target.
 
 ```sh
-git clone https://github.com/DhananjayBhosale/MacDuo.git
-cd MacDuo
+git clone https://github.com/dalchandrana/MacFold.git
+cd MacFold
 ./build.sh
-open "build/Mac Duo.app"
+open "build/Mac Fold.app"
 ```
 
 The default build uses ad-hoc signing. For a stable Screen Recording identity across rebuilds, provide your own Apple Development certificate:
 
 ```sh
-MACDUO_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./build.sh
+MACFOLD_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./build.sh
 ```
 
 You can also store that identity in a local `signing-identity.txt`, which is ignored by Git. Keep using the same identity for updates. An ad-hoc signature changes with the executable, so macOS may require granting access again after a rebuild. No certificate, private key, signing identity file, or personal validation log is included in this repository.
@@ -34,7 +34,7 @@ macOS owns sleep and the secure login screen. Animation cannot be guaranteed whi
 ```sh
 swift test
 swift build
-.build/debug/MacDuo --render-check validation
+.build/debug/MacFold --render-check validation
 ```
 
 The render check uses generated artwork only; it does not capture the desktop. It verifies all six effects: pixel identity when open/reopened, black closure, opacity, blur, practical geometry, distinct intermediate frames, smooth onset, Reduce Motion, cache freshness and GPU timing. Add `--animation` to export generated closing/reopening frames for every effect. GPU measurements exclude capture and display composition. Physical lid sweeps, sustained energy use and platform lifecycle transitions still need testing on more hardware.
@@ -53,13 +53,13 @@ The performance work was checked with generated images, resource-retirement/rebu
 
 ### Updates
 
-**Check for Updates** is user initiated. It reads the latest stable release from `DhananjayBhosale/MacDuo` on GitHub. Installation uses `Mac-Duo-mac.zip` and `Mac-Duo-SHA256SUMS.txt`, with download, archive and bundle validation before replacement. Keep these stable asset names in future releases. A writable installation folder is required; the updater does not request administrator access or bypass Gatekeeper. User preferences are preserved. Ad-hoc builds can require **Privacy & Security → Open Anyway** approval and reapproving Screen Recording. A helper startup acknowledgment prevents quitting into a failed installer. Relaunch acknowledgment matches the approved bundle identity, version and executable hash, including isolated macOS launch paths. The recovery dialog keeps the verified candidate and previous app safe while offering Open Privacy & Security, Try Opening Again, or Restore Previous. No security prompt is bypassed.
+**Check for Updates** is user initiated. It reads the latest stable release from `dalchandrana/MacFold` on GitHub. Installation uses `Mac-Fold-mac.zip` and `Mac-Fold-SHA256SUMS.txt`, with download, archive and bundle validation before replacement. Keep these stable asset names in future releases. A writable installation folder is required; the updater does not request administrator access or bypass Gatekeeper. User preferences are preserved. Ad-hoc builds can require **Privacy & Security → Open Anyway** approval and reapproving Screen Recording. A helper startup acknowledgment prevents quitting into a failed installer. Relaunch acknowledgment matches the approved bundle identity, version and executable hash, including isolated macOS launch paths. The recovery dialog keeps the verified candidate and previous app safe while offering Open Privacy & Security, Try Opening Again, or Restore Previous. No security prompt is bypassed.
 
 Update checks and downloads use HTTPS to GitHub. SHA-256 detects corrupt or mismatched downloads; an ad-hoc code signature does not prove publisher identity. Trust still depends on the official repository and GitHub HTTPS. There is no background update polling, telemetry or screen upload.
 
 ## Version 0.1.6 background fix
 
-Capture discovery includes offscreen windows and retains the process identity used to exclude Mac Duo. Desktop changes clear old frames and resume capture without changing the enabled state. Settings rise above the effect only when the user is actively using that window, and return to normal when focus leaves. The old 45-second auto-pause was removed; Esc, the pause shortcut, and stillness clearing remain available.
+Capture discovery includes offscreen windows and retains the process identity used to exclude Mac Fold. Desktop changes clear old frames and resume capture without changing the enabled state. Settings rise above the effect only when the user is actively using that window, and return to normal when focus leaves. The old 45-second auto-pause was removed; Esc, the pause shortcut, and stillness clearing remain available.
 
 The optimized build and 19 tests pass. The old build was observed auto-disabling at 45 seconds; the update remained enabled for 214 seconds until deliberately quit for a relaunch. Live logs confirmed desktop changes with following still enabled, fresh capture and presentation while inactive, and the settings window at its normal level. Renderer and shader files are unchanged from the measurements below.
 
@@ -71,6 +71,6 @@ The optimized arm64 build and 19 Swift tests passed on an Apple M4 MacBook Pro. 
 
 Issues and focused pull requests are welcome. Include macOS version, Mac model, whether its lid sensor is detected, reproduction steps and relevant test results. Do not attach private desktop recordings or signing credentials. Run the checks above for renderer or motion changes. Keep the app dependency-free and respect Reduce Motion and existing power limits.
 
-## Credits
+## Credits & Authorship
 
-Mac Duo combines its own renderer and controls with a credited adaptation of the resting-plane projection. Public demonstrations and hardware research helped guide it; see [ATTRIBUTION.md](../ATTRIBUTION.md). Mac Duo is independent and is not affiliated with Apple, Bendy or the reference projects.
+Mac Fold was engineered and developed by Dalchand Rana. For architecture notes, hardware details, and authorship, see [ATTRIBUTION.md](../ATTRIBUTION.md). Mac Fold is independent and is not affiliated with Apple Inc.

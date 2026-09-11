@@ -36,7 +36,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     @Published var lidAngle: Double?
     @Published var enabled = false
     @Published var checkingPermission = false
-    @Published var status = "Preview is ready. Enable Mac Duo to use your desktop."
+    @Published var status = "Preview is ready. Enable Mac Fold to use your desktop."
     @Published var hasPermission = CGPreflightScreenCaptureAccess()
     @Published var followLid = UserDefaults.standard.object(forKey:"followLid") as? Bool ?? true {
         didSet { UserDefaults.standard.set(followLid,forKey:"followLid") }
@@ -272,7 +272,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
                 let failure = error as NSError
                 if failure.domain == SCStreamErrorDomain && failure.code == SCStreamError.Code.userDeclined.rawValue {
                     self.hasPermission = false
-                    self.status = "Screen access was not accepted. Allow the Mac Duo copy in Applications, then quit and reopen it. If its permission was already on for an older build, remove that old entry and add the current app."
+                    self.status = "Screen access was not accepted. Allow the Mac Fold copy in Applications, then quit and reopen it. If its permission was already on for an older build, remove that old entry and add the current app."
                 } else {
                     self.status = "Could not enable screen capture: \(error.localizedDescription)"
                 }
@@ -414,7 +414,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         guard shouldCapture || capture.isRunning || overlayVisible else { return }
         guard let screen = builtInScreen(), let display = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
               CGDisplayIsInMirrorSet(display.uint32Value) == 0 else {
-            pause("Mac Duo needs an active, unmirrored built-in display.");return
+            pause("Mac Fold needs an active, unmirrored built-in display.");return
         }
         if shouldCapture {
             idleSince = nil
