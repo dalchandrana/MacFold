@@ -30,7 +30,11 @@ Hold the lid still and the screen clears after **1–5 seconds**—**2 seconds**
 
 ## Install
 
-**Apple silicon · macOS 14+ · compatible MacBook lid sensor.** Tested on an M4 MacBook Pro. External displays are not animated.
+> [!NOTE]
+> **MacBook compatibility · macOS 14+**<br>
+> **Expected to work:** MacBook Air with M2 or newer, and 14-/16-inch MacBook Pro with M1 Pro/Max or newer.<br>
+> **Unsupported:** M1 MacBook Air and 13-inch MacBook Pro with M1 or M2.<br>
+> Tested on an M4 MacBook Pro. Mac Duo checks for a compatible lid sensor; external displays are not animated.
 
 1. [Download **Mac-Duo.dmg**](https://github.com/DhananjayBhosale/MacDuo/releases/latest/download/Mac-Duo.dmg), open it, and drag **Mac Duo** into **Applications**.
 2. Open **Mac Duo** from Applications. This release is **not notarized**, so macOS may initially block it with “cannot be opened” or “Apple could not verify” wording.
